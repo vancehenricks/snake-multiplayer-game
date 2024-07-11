@@ -1,0 +1,477 @@
+const PORT = 7575;
+const GAME_TICK = 100;
+const HEARTBEAT = 10000;
+const SCOREBOARD_TICK = 1000;
+const DEFAULT_ENTITY_SIZE = 5;
+const DEFAULT_ACTIVE_SPEED = 3;
+const DEFAULT_IDLE_SPEED = 5;
+const IDLE_TIMEOUT_MS = 30000;
+const DEFAULT_INVULNERABLE_TIMEOUT_MS = 5000;
+const MAX_SCORES_TO_SHOW = 12;
+const MAX_FOOD = 10;
+const MAP = {
+    WIDTH: 500,
+    HEIGHT: 500
+
+}
+const TYPE = {
+    PLAYER: 'player',
+    FOOD: 'food'
+}
+
+const STATUS = {
+    ALIVE: 'alive',
+    DEAD: 'dead'
+}
+
+const CHANNEL = '/game';
+
+let gameEntities = [];
+let scoreBoard = [];
+
+function renderEntitiesToClient(client) {
+    client.send(JSON.stringify({entities: gameEntities}));
+}
+
+function renderPlayerToClient(client, player) {
+    client.send(JSON.stringify({isPlayer: true, entities: [player]}));
+}
+
+function addEntityToMap(entity) {
+    gameEntities = [...gameEntities, entity];
+}
+
+function updateEntityFromMap(entity) {
+    gameEntities = gameEntities.map(gameEntity => 
+        gameEntity.id === entity.id ? entity : gameEntity
+    );
+}
+
+function updateEntityTimeOut(entity) {
+    return {...entity, timeout: Date.now()};
+}
+
+function generateId() {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
+
+function generateRandomColor() {
+    var letters = '01234567';
+    var color = '#';
+    for (var i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 8)];
+    }
+    return color;
+}
+
+function generateRandomPosition() {
+    const offset = 30;
+    return {
+        x: Math.floor(Math.random() * (MAP.WIDTH - offset)),
+        y: Math.floor(Math.random() * (MAP.HEIGHT - offset))
+    }
+}
+
+function createNode ({x, y}) {
+    return {
+        x,
+        y,
+    }
+}
+
+function createTail ({current, max}) {
+    return {current, max};
+}
+
+function updateNodePositions (entity) {
+    for (let i = entity.nodes.length - 1; i > 0; i--) {
+        entity.nodes[i] = entity.nodes[i-1];
+    }
+    return entity;
+}
+
+function generateRandomNumber(min, max) {
+    return Math.floor(Math.random() * (max+1 - min)) + min;
+}
+
+function generateRandomDirection() {
+    let x = generateRandomNumber(0, 1);
+    let y = generateRandomNumber(0, 1);
+
+    if(x === 0) x = -1;
+    if(y === 0) y = -1;
+    
+    return createNode({x, y});
+}
+
+function createInvulnerableState({
+    timeout=Date.now(),
+    maxMs=DEFAULT_INVULNERABLE_TIMEOUT_MS,
+}={}) {
+    return {
+        timeout,
+        maxMs,
+    }
+}
+
+function createEntity({
+    type=TYPE.PLAYER,
+    id=generateId(),
+    position=generateRandomPosition(),
+    name='Player',
+    color=generateRandomColor(),
+    size=DEFAULT_ENTITY_SIZE,
+    score=0,
+    tail=createTail({current: 0, max: 4}),
+    direction=generateRandomDirection(),
+    invulnerable=createInvulnerableState(),
+    timeout= Date.now(),
+    status=STATUS.ALIVE,
+    speed=DEFAULT_ACTIVE_SPEED}={}) {
+    const nodes = [createNode(position)];
+
+    return {type, name, id, color, size, nodes, score, direction, invulnerable, tail, speed, status, timeout};
+}
+
+function foodEntitiesCount() {
+    return gameEntities.filter((entity) => entity.type === TYPE.FOOD).length;
+}
+
+function generateRandomRange(min, max) {
+    return Math.floor((Math.random() * (max - min + 1)) + min);
+ }
+
+function spawnFoodEntities() {
+    if(foodEntitiesCount() > MAX_FOOD) return;
+    const score = generateRandomRange(1, 3);
+
+    const food = createEntity({
+        type: TYPE.FOOD,
+        tail: createTail({current: 0, max: 0}),
+        size: DEFAULT_ENTITY_SIZE + score / .9,
+        color: generateRandomColor(),
+        position: generateRandomPosition(),
+        direction: createNode({x: 0, y: 0}),
+        score,
+    });
+
+    //console.log('Spawning food:', food);
+    addEntityToMap(food);
+}
+
+
+function addNodeToEntity(entity) { 
+    let newEntity = {...entity};
+    const lastNode = newEntity.nodes[newEntity.nodes.length - 1];
+
+    if(newEntity.tail.current < newEntity.tail.max) {
+        newEntity.nodes = [...newEntity.nodes, lastNode];
+        newEntity.tail.current += 1;
+
+        //console.log('New node:', newEntity.nodes);
+    }
+    return newEntity;
+}
+
+function stopWhenOutOfBounds(entity) {
+    const {x, y} = entity.nodes[0];
+    const offset = entity.size*1.5;
+
+    if(x < offset || x > MAP.WIDTH-offset || y < offset || y > MAP.HEIGHT-offset) {
+        return {...entity, direction: {x: 0, y: 0}, status: STATUS.DEAD};
+    }
+    return entity;
+}
+
+/*function isDirectionDiagonal(entity) {
+    return entity.direction.x !== 0 && entity.direction.y !== 0;
+}*/
+
+/*function createColliderNode(entity, node) {
+    const {x, y} = node;
+    const {x: dx, y: dy} = entity.direction;
+    const newNode = createNode({x: x - dx * entity.size, y: y - dy * entity.size});
+    return newNode;
+}*/
+
+function hasIntersect(entity1, entity2) {
+
+    for(let index = 0; index < entity1.nodes.length; index++) {
+        const {x: x1, y: y1} = entity1.nodes[index];
+
+        for(let index2 = 0; index2 < entity2.nodes.length; index2++) {
+            if(entity2.status === STATUS.DEAD) continue;
+
+            const {x: x2, y: y2} = entity2.nodes[index2];
+            let offset = entity1.size + entity2.size;
+
+            const isSelf = isEntitySelf(entity1, entity2);
+
+            if (isSelf) {
+                offset = entity1.size;
+                if(index2 < 2) continue;
+            }
+
+            if(x1 < x2 + offset &&
+                x1 + offset > x2 &&
+                y1 < y2 + offset &&
+                y1 + offset > y2) {
+    
+                return {hitNode1: index, hitNode2: index2};
+            }
+        }
+    }
+
+    return {hitNode1: -1, hitNode2: -1};
+}
+
+function hasHitHeadNode(hits) {
+    const { hitNode1, hitNode2 } = hits;
+    return hitNode1 === 0 && hitNode2 === 0;
+}
+
+function hasHitTailNode1(hits) {
+    const { hitNode1, hitNode2 } = hits;
+    return hitNode1 > 0 && hitNode2 === 0;
+}
+
+function hasHitTailNode2(hits) {
+    const { hitNode1, hitNode2 } = hits;
+    //we check for > 1 since 1 and 0 would have the same coordinates no idea why
+    return hitNode1 === 0 && hitNode2 > 1;
+}
+
+function isEntitySelf(entity1, entity2) {
+    return entity1.id === entity2.id;
+}
+
+function addScoreToEntity(entity, score) {
+    return {...entity, tail: {...entity.tail, max: entity.tail.max + score},
+    score: entity.score + score};
+}
+
+function killEntity(entity) {
+    return {...entity, direction: {x: 0, y: 0}, status: STATUS.DEAD};
+}
+
+function intersectPlayerToPlayer({entity, gameEntity, hits}) {
+    if (isEntitySelf(entity, gameEntity) || entity.type !== TYPE.PLAYER || 
+     gameEntity.type !== TYPE.PLAYER) return entity;
+
+    if(hasHitTailNode2(hits) || hasHitHeadNode(hits)) {
+        return killEntity(entity);
+    }
+
+    if(hasHitTailNode1(hits)) {
+        return addScoreToEntity(entity, gameEntity.score);
+    }
+
+    return entity;
+}
+
+function intersectPlayerToFood({entity, gameEntity, hits}) {
+    if(entity.type === TYPE.PLAYER && gameEntity.type === TYPE.FOOD && hasHitHeadNode(hits)) {
+
+        return addScoreToEntity(entity, gameEntity.score);
+    }
+
+    return entity;
+}
+
+function intersectFoodToPlayer({entity, gameEntity, hits}) {
+
+    if(entity.type === TYPE.FOOD && gameEntity.type === TYPE.PLAYER && hasHitHeadNode(hits)) {
+        return killEntity(entity);
+    }
+    return entity;
+}
+
+function intersectSelf({entity, gameEntity, hits}) {
+    if (!isEntitySelf(entity, gameEntity) || 
+        entity.type !== TYPE.PLAYER ||
+        gameEntity.type !== TYPE.PLAYER) return entity;
+
+    //console.log('Intersecting self:', hits);
+
+    if(hasHitTailNode2(hits)) {
+        return killEntity(entity);
+    }
+
+    return entity;
+}
+
+function isIdleTimedOut(entity) {
+    //console.log('timeout', Date.now() - entity.timeout, TIMEOUT_MS, entity.timeout);
+    if (Date.now() - entity.timeout > IDLE_TIMEOUT_MS) {
+        return true;
+    }
+    return false;
+}
+
+function isInvulnerableTimedOut(entity) {
+    if (Date.now() - entity.invulnerable.timeout > entity.invulnerable.maxMs) {
+        return true;
+    }
+    return false;
+
+}
+
+function removeIdleTimedOutEntities() {
+    gameEntities = [...gameEntities].filter((entity) => {
+        if(isIdleTimedOut(entity)) {
+            //console.log('Removing entity:', entity);
+            return false;
+        }
+        return true;
+    });
+}
+
+function removeDeadEntities() {
+    gameEntities = [...gameEntities].filter((entity) => {
+        if(entity.status === STATUS.DEAD) {
+            return false;
+        }
+        return true;
+    });
+}
+
+function sendPing(ws) {
+    ws.send(JSON.stringify({type: 'ping'}));
+}
+
+function checkForIntersect() {
+    const entities = [...gameEntities];
+    entities.forEach((entity) => {
+        let updatedEntity = stopWhenOutOfBounds(entity);
+        entities.forEach((gameEntity) => {
+            const hits = hasIntersect(updatedEntity, gameEntity);
+            updatedEntity = intersectPlayerToFood({entity: updatedEntity, gameEntity, hits});
+            updatedEntity = intersectFoodToPlayer({entity: updatedEntity, gameEntity, hits});
+            if(!isInvulnerableTimedOut(updatedEntity)) return;
+            updatedEntity = intersectPlayerToPlayer({entity: updatedEntity, gameEntity, hits});
+            updatedEntity = intersectSelf({entity: updatedEntity, gameEntity, hits});
+        });
+        updateEntityFromMap(updatedEntity);
+    });
+}
+
+function movePlayerEntities() {
+    [...gameEntities].forEach((entity) => {
+        if(entity.type === 'player') {
+            const {x, y} = entity.nodes[0];
+            const {x: dx, y: dy} = entity.direction;
+            
+            const newNode = createNode({x: x - dx * DEFAULT_IDLE_SPEED, 
+                y: y - dy * DEFAULT_IDLE_SPEED});
+
+            const newEntity = {
+                ...entity,
+                nodes: [newNode, ...entity.nodes.slice(1)]
+            };
+
+            let updatedNodes = addNodeToEntity(newEntity);
+            updatedNodes = updateNodePositions(updatedNodes);
+            updateEntityFromMap(updatedNodes);
+        }
+    });
+
+}
+
+function createScoreEntry({id, name, score}) {
+    return {id, name, score, date: Date.now()};
+}
+
+function sortEntryToScoreBoard(scoreEntry) {;
+    let initialScoreBoard = removeInScoreBoard(scoreEntry);
+    initialScoreBoard = [...initialScoreBoard, scoreEntry];
+    scoreBoard = initialScoreBoard.sort((a, b) => b.score - a.score).slice(0, MAX_SCORES_TO_SHOW);
+}
+
+function removeInScoreBoard(scoreEntry) {
+    return [...scoreBoard].filter((entry) => entry.id !== scoreEntry.id);
+}
+
+function calculateScoresOfPlayers() {
+    [...gameEntities].forEach((entity) => {
+        if(entity.type === TYPE.PLAYER) {
+             const scoreEntry = createScoreEntry({...entity});
+            sortEntryToScoreBoard(scoreEntry);
+        }
+    });
+}
+
+function renderScoreBoardToClient(client) {
+    client.send(JSON.stringify({type: 'scoreBoard', scoreBoard}));
+}
+
+var express = require('express');
+var expressWs = require('express-ws');
+
+var expressWs = expressWs(express());
+var app = expressWs.app;
+
+
+app.ws(CHANNEL, function(ws, req) {
+    console.log('Client connected, IP:', req.ip);
+    const player = createEntity();
+
+    console.log('Created Player:', player);
+
+    addEntityToMap(player);
+    renderPlayerToClient(ws, player);
+
+    ws.on('message', function(data) {
+        const {player: p, type} = JSON.parse(data);        
+        if(type === 'pong') {
+            //console.log('Pong received from client, IP:', req.ip);
+            ws.player = p;
+            return;
+        }
+
+        if(!p || p == {}) return
+
+        const pUpdatedTimeout = updateEntityTimeOut(p);
+        updateEntityFromMap(pUpdatedTimeout);
+        console.log('Client says:', pUpdatedTimeout);
+    });
+
+    ws.on('close', function() {
+        console.log('Client disconnected, IP:', req.ip);
+    });
+});
+
+var aWss = expressWs.getWss(CHANNEL);
+
+
+setInterval(function () {
+    aWss.clients.forEach(function (client) {
+        if(client?.player && isIdleTimedOut(client?.player)) {
+            console.log('Terminating client IP:', client._socket.remoteAddress);
+            return client.terminate();
+        } else {
+            sendPing(client);
+        }
+    });
+  }, HEARTBEAT);
+
+setInterval(function () {
+  aWss.clients.forEach(function (client) {
+    spawnFoodEntities();
+    checkForIntersect();
+    movePlayerEntities();
+    renderEntitiesToClient(client);
+    removeDeadEntities();
+    removeIdleTimedOutEntities();
+  });
+}, GAME_TICK);
+
+setInterval(function () {
+    aWss.clients.forEach(function (client) {
+        calculateScoresOfPlayers();
+        renderScoreBoardToClient(client);
+    });
+}, SCOREBOARD_TICK);
+
+console.log('Server listening on port:', PORT);
+
+app.listen(PORT)
