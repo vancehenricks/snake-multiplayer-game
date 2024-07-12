@@ -1,5 +1,5 @@
-const PORT = 7575;
-const GAME_TICK = 100;
+const PORT = 9546;
+const GAME_TICK = 90;
 const HEARTBEAT = 10000;
 const SCOREBOARD_TICK = 1000;
 const DEFAULT_ENTITY_SIZE = 5;
@@ -44,6 +44,12 @@ function addEntityToMap(entity) {
 function updateEntityFromMap(entity) {
     gameEntities = gameEntities.map(gameEntity => 
         gameEntity.id === entity.id ? entity : gameEntity
+    );
+}
+
+function updateEntityWithoutNodesFromMap(entity) {
+    gameEntities = gameEntities.map(gameEntity => 
+        gameEntity.id === entity.id ? {...entity, nodes: gameEntity.nodes} : gameEntity
     );
 }
 
@@ -415,7 +421,7 @@ app.ws(CHANNEL, function(ws, req) {
     console.log('Client connected, IP:', req.ip);
     const player = createEntity();
 
-    console.log('Created Player:', player);
+    //console.log('Created Player:', player);
 
     addEntityToMap(player);
     renderPlayerToClient(ws, player);
@@ -431,8 +437,8 @@ app.ws(CHANNEL, function(ws, req) {
         if(!p || p == {}) return
 
         const pUpdatedTimeout = updateEntityTimeOut(p);
-        updateEntityFromMap(pUpdatedTimeout);
-        console.log('Client says:', pUpdatedTimeout);
+        updateEntityWithoutNodesFromMap(pUpdatedTimeout);
+        //console.log('Client says:', pUpdatedTimeout);
     });
 
     ws.on('close', function() {

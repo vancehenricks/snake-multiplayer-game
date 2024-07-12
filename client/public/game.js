@@ -1,5 +1,5 @@
 function establishConnection() {
-    const server = 'ws://localhost:7575'
+    const server = 'ws://82.197.93.188:9546'
     const channel = '/game';
 
     const url = new URL(channel, server).toString()
@@ -341,7 +341,7 @@ document.addEventListener('keyup', function(event) {
 });
 
 
-const CLIENT_TICK_MS = 60;
+const CLIENT_TICK_MS = 90;
 const ANIMATION_TICK_MS = 10;
 
 const animationInterval = setInterval(() => {
