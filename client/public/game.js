@@ -1,8 +1,22 @@
-function establishConnection() {
-    const server = 'ws://82.197.93.188:7541'
-    const channel = '/game';
+const DEFAULT_IDLE_SPEED = 5;
+const CLIENT_TICK_MS = 100;
+const ANIMATION_TICK_MS = 10;
+const IP = 'localhost';
+const PORT = '7541';
+const CHANNEL = '/game';
+const TYPE = {
+    PLAYER: 'player',
+    FOOD: 'food'
+}
 
-    const url = new URL(channel, server).toString()
+const STATUS = {
+    ALIVE: 'alive',
+    DEAD: 'dead'
+}
+
+function establishConnection() {
+    //const server = 'ws://82.197.93.188:7541'
+    const url = new URL(CHANNEL, `ws://${IP}:${PORT}`).toString()
     connection = new WebSocket(url)
 
     connection.onerror = error => {
@@ -38,9 +52,13 @@ function sendPongToServer() {
         console.error('You have to call establishConnection() first');
         return;
         }
-        connection.send(JSON.stringify({ type: 'pong', player }));
+        connection.send(JSON.stringify({ type: 'pong', player: { id: player.id, timeout: player.timeout } }));
         //console.info('Sending pong to server');
-    }
+}
+
+function sendPlayerDirectionToServer(entity) {
+    sendToServer({ player: { id: entity.id, direction: entity.direction}})
+}
 
 function createCanvas() {
     canvas = document.getElementById('gameCanvas');
@@ -135,16 +153,6 @@ function clearCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-const TYPE = {
-    PLAYER: 'player',
-    FOOD: 'food'
-}
-
-const STATUS = {
-    ALIVE: 'alive',
-    DEAD: 'dead'
-}
-
 function renderInvulnerableEffect(entity) {
     const {nodes, size, color} = entity;
     const {x, y} = nodes[0];
@@ -160,7 +168,7 @@ function renderInvulnerableEffect(entity) {
 
 function renderEntities() {
     clearCanvas();
-    gameEntities.forEach((entity) => {
+    [...gameEntities].forEach((entity) => {
         if(entity.id === player.id) return;
         if(entity.type === TYPE.FOOD) {
             renderFood(entity);
@@ -172,8 +180,8 @@ function renderEntities() {
 
     renderPlayer();}
 
-function getPlayer(entitles) {
-    return entitles.find((entity) => entity.id === player.id);
+function getPlayer(entities) {
+    return entities.find((entity) => entity.id === player.id) || player;
 }
 
 function createNode ({x, y}) {
@@ -220,7 +228,7 @@ function playerControl() {
 
     if (direction.x !== 0 || direction.y !== 0) {
         player = updateDirection({entity: player, direction});
-        sendToServer({player});
+        sendPlayerDirectionToServer(player);
     }
 }
 
@@ -303,6 +311,83 @@ function createAnimationFrame({id, payload}) {
     return {id, payload};
 }
 
+function updateEntityFromMap(entity) {
+    gameEntities = [...gameEntities].map(gameEntity => {
+        if(gameEntity.id === entity.id) {
+           return { ...gameEntity, ...entity };
+        }
+        return gameEntity;
+    });
+}
+
+function updateNodePositions (entity) {
+    for (let i = entity.nodes.length - 1; i > 0; i--) {
+        entity.nodes[i] = entity.nodes[i-1];
+    }
+    return entity;
+}
+
+function addNodeToEntity(entity) { 
+    let newEntity = {...entity};
+    const lastNode = newEntity.nodes[newEntity.nodes.length - 1];
+
+    if(newEntity.tail.current < newEntity.tail.max) {
+        newEntity.nodes = [...newEntity.nodes, lastNode];
+        newEntity.tail.current += 1;
+
+        //console.log('New node:', newEntity.nodes);
+    }
+    return newEntity;
+}
+
+function movePlayerEntities() {
+    [...gameEntities].forEach((entity) => {
+        if(entity.type === 'player') {
+            const {x, y} = entity.nodes[0];
+            const {x: dx, y: dy} = entity.direction;
+            
+            const newNode = createNode({x: x - dx * DEFAULT_IDLE_SPEED, 
+                y: y - dy * DEFAULT_IDLE_SPEED});
+
+            const newEntity = {
+                ...entity,
+                nodes: [newNode, ...entity.nodes.slice(1)]
+            };
+            
+            let updatedNodes = addNodeToEntity(newEntity);
+            updatedNodes = updateNodePositions(updatedNodes);
+            updateEntityFromMap(updatedNodes);
+
+            if(player.id === updatedNodes.id) {
+                console.log({ player, updatedNodes })
+                player = updatedNodes;
+            }
+        }
+    });
+}
+
+
+function updateEntities(entities) {
+    if (gameEntities.length === 0) return entities;
+
+    return [...gameEntities].map(gameEntity => {
+        const updatedEntity = entities.find((entity) => 
+            entity.id === gameEntity.id
+        )
+
+        return {...gameEntity, ...updatedEntity}
+    })   
+}
+
+function removeDeadEntities() {
+    gameEntities = [...gameEntities].filter(gameEntity => gameEntity.status === STATUS.ALIVE)
+}
+
+function sendPlayerNameToServer (entity) {
+    const player = {id: entity.id, name: getPlayerName()};
+    sendToServer({player});
+}
+
 establishConnection();
 createCanvas();
 let ctx = canvas.getContext('2d');
@@ -328,11 +413,13 @@ const {isPlayer, entities, type, scoreBoard: sb} = JSON.parse(data);
     }
 
     if (isPlayer) {
-        player =  {...entities[0], name: getPlayerName()};
-        sendToServer({player});
-    } else {
-        player = getPlayer(entities) || player;
+        player = entities[0];
         gameEntities = entities;
+        sendPlayerNameToServer(player);
+    } else {
+        const updatedEntities = updateEntities(entities);
+        player = getPlayer(updatedEntities);
+        gameEntities = updatedEntities;
     }
 }
 
@@ -343,10 +430,6 @@ document.addEventListener('keydown', function(event) {
 document.addEventListener('keyup', function(event) {
     keys[event.key] = false;
 });
-
-
-const CLIENT_TICK_MS = 100;
-const ANIMATION_TICK_MS = 10;
 
 const animationInterval = setInterval(() => {
     cleanupStaleAnimations();
@@ -359,4 +442,6 @@ const tickInterval = setInterval(() => {
     displayGameOver();
     updateScoreBoard();
     displayVulnerableEffect();
+    removeDeadEntities();
+    movePlayerEntities();
 }, CLIENT_TICK_MS);

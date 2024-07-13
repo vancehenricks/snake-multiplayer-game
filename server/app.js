@@ -28,9 +28,46 @@ const CHANNEL = '/game';
 
 let gameEntities = [];
 let scoreBoard = [];
+let scoreTouched = true;
+
+function generateEntityProperties(entity) {
+    let updatedEntity = {};
+    Object.keys(entity.touched).forEach((property) => {
+        updatedEntity = {
+            ...updatedEntity,
+            [property]: entity[property]
+        }
+    })
+
+    return updatedEntity;
+}
+
+function isTouchedEmpty(entity) {
+    return Object.keys(entity?.touched).length > 0;
+}
 
 function renderEntitiesToClient(client) {
-    client.send(JSON.stringify({entities: gameEntities}));
+
+    const touchedEntities = [...gameEntities].filter(gameEntity =>
+        isTouchedEmpty(gameEntity)
+    )
+
+    const unusedPropertiesRemoved = touchedEntities.map(entity => {
+        return generateEntityProperties(entity);
+    });
+    
+    if(unusedPropertiesRemoved.length > 0) {
+        client.send(JSON.stringify({entities: unusedPropertiesRemoved}));
+    }
+}
+
+function untouchedGameEntities() {
+    gameEntities = [...gameEntities].map(entity => {
+        return {
+            ...entity,
+            touched: {},
+        }
+    });
 }
 
 function renderPlayerToClient(client, player) {
@@ -42,18 +79,40 @@ function addEntityToMap(entity) {
 }
 
 function updateEntityFromMap(entity) {
-    gameEntities = gameEntities.map(gameEntity => 
-        gameEntity.id === entity.id ? entity : gameEntity
-    );
+    gameEntities = [...gameEntities].map(gameEntity => {
+        if(gameEntity.id === entity.id) {
+           return { ...gameEntity, ...entity };
+        }
+        return gameEntity;
+    });
 }
 
-function sanitizeAndUpdateEntityFromMap(entity) {
-    gameEntities = gameEntities.map(gameEntity => 
-        gameEntity.id === entity.id ? {...entity, 
-            nodes: gameEntity.nodes, 
-            score: gameEntity.score,
-            status: gameEntity.status} : gameEntity
-    );
+function touchListOfKeys (entity) {
+    let touched = {};
+    Object.keys(entity).forEach(key => {
+        touched = { ...touched, [key]: true}
+    })
+
+    return touched;
+}
+
+function sanitizeEntity(entity) {
+    let updatedEntity = { id: entity.id }
+    if (entity?.name) {
+        updatedEntity = {...updatedEntity, name: entity.name,}
+    }
+
+    if (entity?.direction) {
+        updatedEntity = {...updatedEntity, direction: entity.direction,}
+    }
+
+    if (entity?.timeout) {
+        updatedEntity = {...updatedEntity, timeout: entity.timeout,}
+    }
+
+    updatedEntity = { ...updatedEntity, touched: touchListOfKeys(updatedEntity)}
+    
+    return updatedEntity;
 }
 
 function updateEntityTimeOut(entity) {
@@ -123,6 +182,24 @@ function createInvulnerableState({
     }
 }
 
+function touchAllProperties() {
+    return {
+        type: true,
+        id: true,
+        position: true,
+        name: true,
+        color: true,
+        size: true,
+        score: true,
+        tail: true,
+        direction: true,
+        invulnerable: true,
+        timeout: true,
+        status: true,
+        speed: true,
+    }
+}
+
 function createEntity({
     type=TYPE.PLAYER,
     id=generateId(),
@@ -137,9 +214,11 @@ function createEntity({
     timeout= Date.now(),
     status=STATUS.ALIVE,
     speed=DEFAULT_ACTIVE_SPEED}={}) {
-    const nodes = [createNode(position)];
 
-    return {type, name, id, color, size, nodes, score, direction, invulnerable, tail, speed, status, timeout};
+    const nodes = [createNode(position)];
+    const touched=touchAllProperties();
+
+    return {type, name, id, color, size, nodes, score, direction, invulnerable, tail, speed, status, timeout, touched};
 }
 
 function foodEntitiesCount() {
@@ -156,6 +235,7 @@ function spawnFoodEntities() {
 
     const food = createEntity({
         type: TYPE.FOOD,
+        name: 'Food',
         tail: createTail({current: 0, max: 0}),
         size: DEFAULT_ENTITY_SIZE + score / .9,
         color: generateRandomColor(),
@@ -187,7 +267,7 @@ function stopWhenOutOfBounds(entity) {
     const offset = entity.size*1.5;
 
     if(x < offset || x > MAP.WIDTH-offset || y < offset || y > MAP.HEIGHT-offset) {
-        return {...entity, direction: {x: 0, y: 0}, status: STATUS.DEAD};
+        return killEntity(entity);
     }
     return entity;
 }
@@ -255,12 +335,13 @@ function isEntitySelf(entity1, entity2) {
 }
 
 function addScoreToEntity(entity, score) {
+    scoreTouched = true;
     return {...entity, tail: {...entity.tail, max: entity.tail.max + score},
-    score: entity.score + score};
+    score: entity.score + score, touched: {id: true, tail: true, score: true}};
 }
 
 function killEntity(entity) {
-    return {...entity, direction: {x: 0, y: 0}, status: STATUS.DEAD};
+    return {...entity, direction: {x: 0, y: 0}, status: STATUS.DEAD, touched: {id: true, direction: true, status: true,}};
 }
 
 function intersectPlayerToPlayer({entity, gameEntity, hits}) {
@@ -383,7 +464,6 @@ function movePlayerEntities() {
             updateEntityFromMap(updatedNodes);
         }
     });
-
 }
 
 function createScoreEntry({id, name, score}) {
@@ -410,7 +490,11 @@ function calculateScoresOfPlayers() {
 }
 
 function renderScoreBoardToClient(client) {
-    client.send(JSON.stringify({type: 'scoreBoard', scoreBoard}));
+    if(scoreTouched) {
+        client.send(JSON.stringify({type: 'scoreBoard', scoreBoard}));
+    }
+
+    scoreTouched = false;
 }
 
 function getCenterPosition() {
@@ -418,6 +502,10 @@ function getCenterPosition() {
         x: Math.floor(MAP.WIDTH / 2),
         y: Math.floor(MAP.HEIGHT / 2)
     }
+}
+
+function touchNodes(entity) {
+    return{...entity, touched: { ...entity.touched, nodes: true }}
 }
 
 var express = require('express');
@@ -439,18 +527,21 @@ app.ws(CHANNEL, function(ws, req) {
     renderPlayerToClient(ws, player);
 
     ws.on('message', function(data) {
-        const {player: p, type} = JSON.parse(data);        
+        const {player: p, type} = JSON.parse(data);
+        let pUpdated = sanitizeEntity(p);
+        pUpdated = updateEntityTimeOut(pUpdated);
+
         if(type === 'pong') {
             //console.log('Pong received from client, IP:', req.ip);
-            ws.player = p;
+            ws.player = pUpdated;
             return;
         }
 
-        if(!p || p == {}) return
+        if(!pUpdated || pUpdated == {}) return
 
-        const pUpdatedTimeout = updateEntityTimeOut(p);
-        sanitizeAndUpdateEntityFromMap(pUpdatedTimeout);
-        //console.log('Client says:', pUpdatedTimeout);
+        pUpdated = touchNodes(pUpdated);
+        updateEntityFromMap(pUpdated);
+        console.log('Client says:', pUpdated);
     });
 
     ws.on('close', function() {
@@ -463,7 +554,14 @@ var aWss = expressWs.getWss(CHANNEL);
 
 setInterval(function () {
     aWss.clients.forEach(function (client) {
+
         if(client?.player && isIdleTimedOut(client?.player)) {
+
+            console.log({
+                player: client?.player,
+                isTimedOut: isIdleTimedOut(client?.player),
+            })
+
             console.log('Terminating client IP:', client._socket.remoteAddress);
             return client.terminate();
         } else {
@@ -478,6 +576,7 @@ setInterval(function () {
     checkForIntersect();
     movePlayerEntities();
     renderEntitiesToClient(client);
+    untouchedGameEntities();
     removeDeadEntities();
     removeIdleTimedOutEntities();
   });
