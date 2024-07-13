@@ -14,6 +14,22 @@ const STATUS = {
     DEAD: 'dead'
 }
 
+const ENTITY_PROPERTIES = [
+    'type',
+    'id',
+    'position',
+    'name',
+    'color',
+    'size',
+    'score',
+    'tail',
+    'direction',
+    'invulnerable',
+    'timeout',
+    'status',
+    'nodes',
+]
+
 function establishConnection() {
     //const server = 'ws://82.197.93.188:7541'
     const url = new URL(CHANNEL, `ws://${IP}:${PORT}`).toString()
@@ -342,7 +358,7 @@ function addNodeToEntity(entity) {
 
 function movePlayerEntities() {
     [...gameEntities].forEach((entity) => {
-        if(entity.type === 'player') {
+        if(entity.type === TYPE.PLAYER) {
             const {x, y} = entity.nodes[0];
             const {x: dx, y: dy} = entity.direction;
             
@@ -359,24 +375,41 @@ function movePlayerEntities() {
             updateEntityFromMap(updatedNodes);
 
             if(player.id === updatedNodes.id) {
-                console.log({ player, updatedNodes })
                 player = updatedNodes;
             }
         }
     });
 }
 
+function hasCompleteProperties(entity) {
+    let hits = 0;
+    ENTITY_PROPERTIES.forEach(property => {
+        Object.keys(entity).forEach(key => {
+            if(property === key) hits += 1;
+        })
+    });
+
+    return hits === ENTITY_PROPERTIES.length-1;
+}
 
 function updateEntities(entities) {
     if (gameEntities.length === 0) return entities;
 
-    return [...gameEntities].map(gameEntity => {
-        const updatedEntity = entities.find((entity) => 
-            entity.id === gameEntity.id
+    const updatedEntities = entities.map(entity => {
+        const gameEntity = [...gameEntities].find((gEntity) => 
+            entity.id === gEntity.id
         )
 
-        return {...gameEntity, ...updatedEntity}
-    })   
+        return {...gameEntity, ...entity};
+
+    }).filter(entity => hasCompleteProperties(entity))
+
+    const removedDuplicates = [...gameEntities].filter(gameEntity => 
+        !updatedEntities.some(entity => gameEntity.id === entity.id)
+    )
+
+    return [...updatedEntities, ...removedDuplicates]
+
 }
 
 function removeDeadEntities() {
@@ -417,9 +450,12 @@ const {isPlayer, entities, type, scoreBoard: sb} = JSON.parse(data);
         gameEntities = entities;
         sendPlayerNameToServer(player);
     } else {
+        //console.log({ gameEntities })
         const updatedEntities = updateEntities(entities);
         player = getPlayer(updatedEntities);
         gameEntities = updatedEntities;
+        console.log({gameEntities})
+
     }
 }
 

@@ -3,7 +3,6 @@ const GAME_TICK_MS = 100;
 const HEARTBEAT = 10000;
 const SCOREBOARD_TICK = 1000;
 const DEFAULT_ENTITY_SIZE = 5;
-const DEFAULT_ACTIVE_SPEED = 3;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
 const DEFAULT_INVULNERABLE_TIMEOUT_MS = 5000;
@@ -196,7 +195,7 @@ function touchAllProperties() {
         invulnerable: true,
         timeout: true,
         status: true,
-        speed: true,
+        nodes: true,
     }
 }
 
@@ -212,13 +211,12 @@ function createEntity({
     direction=generateRandomDirection(),
     invulnerable=createInvulnerableState(),
     timeout= Date.now(),
-    status=STATUS.ALIVE,
-    speed=DEFAULT_ACTIVE_SPEED}={}) {
+    status=STATUS.ALIVE}={}) {
 
     const nodes = [createNode(position)];
     const touched=touchAllProperties();
 
-    return {type, name, id, color, size, nodes, score, direction, invulnerable, tail, speed, status, timeout, touched};
+    return {type, name, id, color, size, nodes, score, direction, invulnerable, tail, status, timeout, touched};
 }
 
 function foodEntitiesCount() {
@@ -406,13 +404,13 @@ function isInvulnerableTimedOut(entity) {
 
 }
 
-function removeIdleTimedOutEntities() {
-    gameEntities = [...gameEntities].filter((entity) => {
+function markDeadForIdleTimedOutEntities() {
+    gameEntities = [...gameEntities].map((entity) => {
         if(isIdleTimedOut(entity)) {
             //console.log('Removing entity:', entity);
-            return false;
+            return killEntity(entity);
         }
-        return true;
+        return entity;
     });
 }
 
@@ -447,7 +445,7 @@ function checkForIntersect() {
 
 function movePlayerEntities() {
     [...gameEntities].forEach((entity) => {
-        if(entity.type === 'player') {
+        if(entity.type === TYPE.PLAYER) {
             const {x, y} = entity.nodes[0];
             const {x: dx, y: dy} = entity.direction;
             
@@ -578,7 +576,7 @@ setInterval(function () {
     renderEntitiesToClient(client);
     untouchedGameEntities();
     removeDeadEntities();
-    removeIdleTimedOutEntities();
+    markDeadForIdleTimedOutEntities();
   });
 }, GAME_TICK_MS);
 
