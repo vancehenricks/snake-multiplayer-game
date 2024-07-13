@@ -1,5 +1,5 @@
-const PORT = 9546;
-const GAME_TICK = 90;
+const PORT = 7541;
+const GAME_TICK_MS = 100;
 const HEARTBEAT = 10000;
 const SCOREBOARD_TICK = 1000;
 const DEFAULT_ENTITY_SIZE = 5;
@@ -47,9 +47,12 @@ function updateEntityFromMap(entity) {
     );
 }
 
-function updateEntityWithoutNodesFromMap(entity) {
+function sanitizeAndUpdateEntityFromMap(entity) {
     gameEntities = gameEntities.map(gameEntity => 
-        gameEntity.id === entity.id ? {...entity, nodes: gameEntity.nodes} : gameEntity
+        gameEntity.id === entity.id ? {...entity, 
+            nodes: gameEntity.nodes, 
+            score: gameEntity.score,
+            status: gameEntity.status} : gameEntity
     );
 }
 
@@ -410,6 +413,13 @@ function renderScoreBoardToClient(client) {
     client.send(JSON.stringify({type: 'scoreBoard', scoreBoard}));
 }
 
+function getCenterPosition() {
+    return {
+        x: Math.floor(MAP.WIDTH / 2),
+        y: Math.floor(MAP.HEIGHT / 2)
+    }
+}
+
 var express = require('express');
 var expressWs = require('express-ws');
 
@@ -419,7 +429,9 @@ var app = expressWs.app;
 
 app.ws(CHANNEL, function(ws, req) {
     console.log('Client connected, IP:', req.ip);
-    const player = createEntity();
+    const player = createEntity({
+        position: getCenterPosition(),
+    });
 
     //console.log('Created Player:', player);
 
@@ -437,7 +449,7 @@ app.ws(CHANNEL, function(ws, req) {
         if(!p || p == {}) return
 
         const pUpdatedTimeout = updateEntityTimeOut(p);
-        updateEntityWithoutNodesFromMap(pUpdatedTimeout);
+        sanitizeAndUpdateEntityFromMap(pUpdatedTimeout);
         //console.log('Client says:', pUpdatedTimeout);
     });
 
@@ -469,7 +481,7 @@ setInterval(function () {
     removeDeadEntities();
     removeIdleTimedOutEntities();
   });
-}, GAME_TICK);
+}, GAME_TICK_MS);
 
 setInterval(function () {
     aWss.clients.forEach(function (client) {

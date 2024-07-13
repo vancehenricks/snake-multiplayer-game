@@ -1,5 +1,5 @@
 function establishConnection() {
-    const server = 'ws://82.197.93.188:9546'
+    const server = 'ws://82.197.93.188:7541'
     const channel = '/game';
 
     const url = new URL(channel, server).toString()
@@ -212,7 +212,12 @@ function playerControl() {
             direction.y += keyDirectionMap[lowerKey].y;
         }
     }
-    
+
+    if(direction.x === player.direction.x && direction.y === player.direction.y ||
+       player.direction.x === -direction.x && player.direction.y === -direction.y
+    )
+        return
+
     if (direction.x !== 0 || direction.y !== 0) {
         player = updateDirection({entity: player, direction});
         sendToServer({player});
@@ -302,7 +307,6 @@ establishConnection();
 createCanvas();
 let ctx = canvas.getContext('2d');
 let player = {};
-let previousDirection = {x: 0, y: 0};
 let gameEntities = [];
 let gameAnimation = [];
 let scoreBoard = [];
@@ -341,7 +345,7 @@ document.addEventListener('keyup', function(event) {
 });
 
 
-const CLIENT_TICK_MS = 90;
+const CLIENT_TICK_MS = 100;
 const ANIMATION_TICK_MS = 10;
 
 const animationInterval = setInterval(() => {
