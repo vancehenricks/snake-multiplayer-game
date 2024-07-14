@@ -1,7 +1,7 @@
 const PORT = 7541;
 const GAME_TICK_MS = 100;
-const HEARTBEAT = 10000;
-const SCOREBOARD_TICK = 1000;
+const HEARTBEAT_MS = 10000;
+const SCOREBOARD_MS = 1000;
 const DEFAULT_ENTITY_SIZE = 5;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
@@ -53,18 +53,19 @@ function isTouchedEmpty(entity) {
     return Object.keys(entity?.touched).length > 0;
 }
 
-function renderEntitiesToClients() {
-    aWss.clients.forEach((client) => {
-        const touchedEntities = [...gameEntities].filter(gameEntity =>
-            isTouchedEmpty(gameEntity)
-        )
+function renderEntitiesToClients(options) {
+
+    const touchedEntities = [...gameEntities].filter(gameEntity =>
+        isTouchedEmpty(gameEntity)
+    )
+    const unusedPropertiesRemoved = touchedEntities.map(entity => generateEntityProperties(entity));
     
-        const unusedPropertiesRemoved = touchedEntities.map(entity => generateEntityProperties(entity));
-        
-        if(unusedPropertiesRemoved.length > 0) {
+    if(unusedPropertiesRemoved.length > 0) {
+        aWss.clients.forEach((client) => {
+            if (client === options?.excluding) return;
             client.send(JSON.stringify({entities: unusedPropertiesRemoved}));
-        }
-    })
+        })
+    }
 }
 
 function untouchedGameEntities() {
@@ -499,9 +500,8 @@ function renderScoreBoardToClients() {
         if(scoreTouched) {
             client.send(JSON.stringify({type: 'scoreBoard', scoreBoard}));
         }
-    
-        scoreTouched = false;
     })
+    scoreTouched = false;
 }
 
 function getCenterPosition() {
@@ -515,6 +515,33 @@ function touchNodes(entity) {
     return {...entity, touched: { ...entity.touched, nodes: true }}
 }
 
+function updateGame() {
+    spawnFoodEntities();
+    checkForIntersect();
+    movePlayerEntities();
+    renderEntitiesToClients();
+    untouchedGameEntities();
+    removeDeadEntities();
+    markDeadForIdleTimedOutEntities();
+}
+
+function updateHeartBeat() {
+    aWss.clients.forEach((client) => {
+        if(client?.player && isIdleTimedOut(client?.player)) {
+
+            console.log('Terminating client IP:', client._socket.remoteAddress);
+            return client.terminate();
+        } else {
+            sendPing(client);
+        }
+    });
+}
+
+function updateScoreBoard() {
+    calculateScoresOfPlayers();
+    renderScoreBoardToClients();
+}
+
 app.ws(CHANNEL,(ws, req) => {
     console.log('Client connected, IP:', req.ip);
     const player = createEntity({
@@ -525,6 +552,7 @@ app.ws(CHANNEL,(ws, req) => {
 
     addEntityToMap(player);
     renderEverythingToClient(ws, player);
+    renderEntitiesToClients({excluding: ws});
 
     ws.on('message',(data) => {
         const {player, type} = JSON.parse(data);
@@ -549,37 +577,20 @@ app.ws(CHANNEL,(ws, req) => {
     });
 });
 
-setInterval(() => {
-    aWss.clients.forEach((client) => {
-        if(client?.player && isIdleTimedOut(client?.player)) {
+let heartBeatTimeOutId = setTimeout(function run() {
+    updateHeartBeat();
+    heartBeatTimeOutId = setTimeout(run, HEARTBEAT_MS);
+}, HEARTBEAT_MS);
 
-            console.log({
-                player: client?.player,
-                isTimedOut: isIdleTimedOut(client?.player),
-            })
-
-            console.log('Terminating client IP:', client._socket.remoteAddress);
-            return client.terminate();
-        } else {
-            sendPing(client);
-        }
-    });
-  }, HEARTBEAT);
-
-setInterval(() => {
-  spawnFoodEntities();
-  checkForIntersect();
-  movePlayerEntities();
-  renderEntitiesToClients();
-  untouchedGameEntities();
-  removeDeadEntities();
-  markDeadForIdleTimedOutEntities();
+let tickTimeOutId = setTimeout(function run() {
+    updateGame();
+    tickTimeOutId = setTimeout(run, GAME_TICK_MS);
 }, GAME_TICK_MS);
 
-setInterval(() => {
-    calculateScoresOfPlayers();
-    renderScoreBoardToClients();
-}, SCOREBOARD_TICK);
+let scoreBoardTimeOutId = setTimeout(function run() {
+    updateScoreBoard();
+    scoreBoardTimeOutId = setTimeout(run, SCOREBOARD_MS)
+}, SCOREBOARD_MS);
 
 console.log('Server listening on port:', PORT);
 
