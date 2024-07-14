@@ -237,14 +237,15 @@ function playerControl() {
         }
     }
 
-    if(direction.x === player.direction.x && direction.y === player.direction.y ||
-       player.direction.x === -direction.x && player.direction.y === -direction.y
+    if(direction.x === previousDirection.x && direction.y === previousDirection.y ||
+        previousDirection.x === -direction.x && previousDirection.y === -direction.y
     )
         return
 
     if (direction.x !== 0 || direction.y !== 0) {
-        player = updateDirection({entity: player, direction});
-        sendPlayerDirectionToServer(player);
+        const updatedPlayerDirection = updateDirection({entity: player, direction});
+        sendPlayerDirectionToServer(updatedPlayerDirection);
+        previousDirection = direction;
     }
 }
 
@@ -400,6 +401,10 @@ function updateEntities(entities) {
             entity.id === gEntity.id
         )
 
+        if(entity.type === TYPE.PLAYER && player.id !== entity.id) {
+            console.log({entity})
+        }
+
         return {...gameEntity, ...entity};
 
     }).filter(entity => hasCompleteProperties(entity))
@@ -426,12 +431,13 @@ createCanvas();
 let ctx = canvas.getContext('2d');
 let player = {};
 let gameEntities = [];
+let previousDirection = [];
 let gameAnimation = [];
 let scoreBoard = [];
 let keys = {};
 
 connection.onmessage = ({data}) => {
-const {isPlayer, entities, type, scoreBoard: sb} = JSON.parse(data);
+const {player: p, entities, type, scoreBoard: sb} = JSON.parse(data);
 //console.log('Server says:', {entities, isPlayer, type})
 
     if (type === 'ping') {
@@ -445,8 +451,8 @@ const {isPlayer, entities, type, scoreBoard: sb} = JSON.parse(data);
         return;
     }
 
-    if (isPlayer) {
-        player = entities[0];
+    if (p) {
+        player = p;
         gameEntities = entities;
         sendPlayerNameToServer(player);
     } else {

@@ -52,10 +52,15 @@ function renderEntitiesToClient(client) {
     )
 
     const unusedPropertiesRemoved = touchedEntities.map(entity => {
-        return generateEntityProperties(entity);
+        const generatedEntity = generateEntityProperties(entity)
+        //console.log({ generatedEntity });
+        return generatedEntity;
     });
     
+    //console.log({unusedPropertiesRemoved})
+
     if(unusedPropertiesRemoved.length > 0) {
+        //console.log({unusedPropertiesRemoved})
         client.send(JSON.stringify({entities: unusedPropertiesRemoved}));
     }
 }
@@ -70,7 +75,7 @@ function untouchedGameEntities() {
 }
 
 function renderPlayerToClient(client, player) {
-    client.send(JSON.stringify({isPlayer: true, entities: [player]}));
+    client.send(JSON.stringify({player, entities: gameEntities}));
 }
 
 function addEntityToMap(entity) {
@@ -503,14 +508,14 @@ function getCenterPosition() {
 }
 
 function touchNodes(entity) {
-    return{...entity, touched: { ...entity.touched, nodes: true }}
+    return {...entity, touched: { ...entity.touched, nodes: true }}
 }
 
-var express = require('express');
+const express = require('express');
 var expressWs = require('express-ws');
 
-var expressWs = expressWs(express());
-var app = expressWs.app;
+expressWs = expressWs(express());
+const app = expressWs.app;
 
 
 app.ws(CHANNEL, function(ws, req) {
@@ -525,21 +530,21 @@ app.ws(CHANNEL, function(ws, req) {
     renderPlayerToClient(ws, player);
 
     ws.on('message', function(data) {
-        const {player: p, type} = JSON.parse(data);
-        let pUpdated = sanitizeEntity(p);
-        pUpdated = updateEntityTimeOut(pUpdated);
+        const {player, type} = JSON.parse(data);
+        let playerUpdated = sanitizeEntity(player);
+        playerUpdated = updateEntityTimeOut(playerUpdated);
 
         if(type === 'pong') {
             //console.log('Pong received from client, IP:', req.ip);
-            ws.player = pUpdated;
+            ws.player = playerUpdated;
             return;
         }
 
-        if(!pUpdated || pUpdated == {}) return
+        if(!playerUpdated) return
 
-        pUpdated = touchNodes(pUpdated);
-        updateEntityFromMap(pUpdated);
-        console.log('Client says:', pUpdated);
+        playerUpdated = touchNodes(playerUpdated);
+        updateEntityFromMap(playerUpdated);
+        //console.log('Client says:', pUpdated);
     });
 
     ws.on('close', function() {
