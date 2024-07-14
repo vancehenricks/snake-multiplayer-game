@@ -1,7 +1,8 @@
 const DEFAULT_IDLE_SPEED = 5;
 const CLIENT_TICK_MS = 100;
 const ANIMATION_TICK_MS = 10;
-const IP = 'localhost';
+//const IP = 'localhost';
+const IP = '82.197.93.188';
 const PORT = '7541';
 const CHANNEL = '/game';
 const TYPE = {
@@ -243,16 +244,16 @@ function playerControl() {
         return
 
     if (direction.x !== 0 || direction.y !== 0) {
-        const updatedPlayerDirection = updateDirection({entity: player, direction});
-        sendPlayerDirectionToServer(updatedPlayerDirection);
+        player = updateDirection({entity: player, direction});
+        sendPlayerDirectionToServer(player);
         previousDirection = direction;
     }
 }
 
 function displayGameOver() {
     if (player.status === STATUS.DEAD) {
-        clearInterval(tickInterval);
-        clearInterval(animationInterval);
+        clearTimeout(ticketTimeOutId);
+        clearTimeout(animationTimeOutId);
         //console.log('Game over');
         gameOver();
     }
@@ -426,6 +427,19 @@ function sendPlayerNameToServer (entity) {
     sendToServer({player});
 }
 
+function updateGame() {
+    if (!startGameUpdate) return;
+    playerControl();
+    updateScore();
+    renderEntities();
+    displayGameOver();
+    updateScoreBoard();
+    displayVulnerableEffect();
+    removeDeadEntities();
+    movePlayerEntities();
+}
+
+
 establishConnection();
 createCanvas();
 let ctx = canvas.getContext('2d');
@@ -435,6 +449,7 @@ let previousDirection = [];
 let gameAnimation = [];
 let scoreBoard = [];
 let keys = {};
+let startGameUpdate = false;
 
 connection.onmessage = ({data}) => {
 const {player: p, entities, type, scoreBoard: sb} = JSON.parse(data);
@@ -456,12 +471,10 @@ const {player: p, entities, type, scoreBoard: sb} = JSON.parse(data);
         gameEntities = entities;
         sendPlayerNameToServer(player);
     } else {
-        //console.log({ gameEntities })
         const updatedEntities = updateEntities(entities);
         player = getPlayer(updatedEntities);
         gameEntities = updatedEntities;
-        console.log({gameEntities})
-
+        startGameUpdate = true;
     }
 }
 
@@ -473,17 +486,12 @@ document.addEventListener('keyup', function(event) {
     keys[event.key] = false;
 });
 
-const animationInterval = setInterval(() => {
+let animationTimeOutId = setTimeout(function run() {
     cleanupStaleAnimations();
+    animationTimeOutId = setTimeout(run, ANIMATION_TICK_MS);
 }, ANIMATION_TICK_MS);
 
-const tickInterval = setInterval(() => {
-    playerControl();
-    updateScore();
-    renderEntities();
-    displayGameOver();
-    updateScoreBoard();
-    displayVulnerableEffect();
-    removeDeadEntities();
-    movePlayerEntities();
+let ticketTimeOutId = setTimeout(function run() {
+    updateGame();
+    ticketTimeOutId = setTimeout(run, CLIENT_TICK_MS);
 }, CLIENT_TICK_MS);
