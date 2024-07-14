@@ -25,6 +25,14 @@ const STATUS = {
 
 const CHANNEL = '/game';
 
+const express = require('express');
+var expressWs = require('express-ws');
+
+expressWs = expressWs(express());
+const app = expressWs.app;
+
+const aWss = expressWs.getWss(CHANNEL);
+
 let gameEntities = [];
 let scoreBoard = [];
 let scoreTouched = true;
@@ -45,24 +53,18 @@ function isTouchedEmpty(entity) {
     return Object.keys(entity?.touched).length > 0;
 }
 
-function renderEntitiesToClient(client) {
-
-    const touchedEntities = [...gameEntities].filter(gameEntity =>
-        isTouchedEmpty(gameEntity)
-    )
-
-    const unusedPropertiesRemoved = touchedEntities.map(entity => {
-        const generatedEntity = generateEntityProperties(entity)
-        //console.log({ generatedEntity });
-        return generatedEntity;
-    });
+function renderEntitiesToClients() {
+    aWss.clients.forEach((client) => {
+        const touchedEntities = [...gameEntities].filter(gameEntity =>
+            isTouchedEmpty(gameEntity)
+        )
     
-    //console.log({unusedPropertiesRemoved})
-
-    if(unusedPropertiesRemoved.length > 0) {
-        //console.log({unusedPropertiesRemoved})
-        client.send(JSON.stringify({entities: unusedPropertiesRemoved}));
-    }
+        const unusedPropertiesRemoved = touchedEntities.map(entity => generateEntityProperties(entity));
+        
+        if(unusedPropertiesRemoved.length > 0) {
+            client.send(JSON.stringify({entities: unusedPropertiesRemoved}));
+        }
+    })
 }
 
 function untouchedGameEntities() {
@@ -74,7 +76,7 @@ function untouchedGameEntities() {
     });
 }
 
-function renderPlayerToClient(client, player) {
+function renderEverythingToClient(client, player) {
     client.send(JSON.stringify({player, entities: gameEntities}));
 }
 
@@ -492,12 +494,14 @@ function calculateScoresOfPlayers() {
     });
 }
 
-function renderScoreBoardToClient(client) {
-    if(scoreTouched) {
-        client.send(JSON.stringify({type: 'scoreBoard', scoreBoard}));
-    }
-
-    scoreTouched = false;
+function renderScoreBoardToClients() {
+    aWss.clients.forEach((client) => {
+        if(scoreTouched) {
+            client.send(JSON.stringify({type: 'scoreBoard', scoreBoard}));
+        }
+    
+        scoreTouched = false;
+    })
 }
 
 function getCenterPosition() {
@@ -511,14 +515,7 @@ function touchNodes(entity) {
     return {...entity, touched: { ...entity.touched, nodes: true }}
 }
 
-const express = require('express');
-var expressWs = require('express-ws');
-
-expressWs = expressWs(express());
-const app = expressWs.app;
-
-
-app.ws(CHANNEL, function(ws, req) {
+app.ws(CHANNEL,(ws, req) => {
     console.log('Client connected, IP:', req.ip);
     const player = createEntity({
         position: getCenterPosition(),
@@ -527,9 +524,9 @@ app.ws(CHANNEL, function(ws, req) {
     //console.log('Created Player:', player);
 
     addEntityToMap(player);
-    renderPlayerToClient(ws, player);
+    renderEverythingToClient(ws, player);
 
-    ws.on('message', function(data) {
+    ws.on('message',(data) => {
         const {player, type} = JSON.parse(data);
         let playerUpdated = sanitizeEntity(player);
         playerUpdated = updateEntityTimeOut(playerUpdated);
@@ -547,17 +544,13 @@ app.ws(CHANNEL, function(ws, req) {
         //console.log('Client says:', pUpdated);
     });
 
-    ws.on('close', function() {
+    ws.on('close',() => {
         console.log('Client disconnected, IP:', req.ip);
     });
 });
 
-var aWss = expressWs.getWss(CHANNEL);
-
-
-setInterval(function () {
-    aWss.clients.forEach(function (client) {
-
+setInterval(() => {
+    aWss.clients.forEach((client) => {
         if(client?.player && isIdleTimedOut(client?.player)) {
 
             console.log({
@@ -573,23 +566,19 @@ setInterval(function () {
     });
   }, HEARTBEAT);
 
-setInterval(function () {
-  aWss.clients.forEach(function (client) {
-    spawnFoodEntities();
-    checkForIntersect();
-    movePlayerEntities();
-    renderEntitiesToClient(client);
-    untouchedGameEntities();
-    removeDeadEntities();
-    markDeadForIdleTimedOutEntities();
-  });
+setInterval(() => {
+  spawnFoodEntities();
+  checkForIntersect();
+  movePlayerEntities();
+  renderEntitiesToClients();
+  untouchedGameEntities();
+  removeDeadEntities();
+  markDeadForIdleTimedOutEntities();
 }, GAME_TICK_MS);
 
-setInterval(function () {
-    aWss.clients.forEach(function (client) {
-        calculateScoresOfPlayers();
-        renderScoreBoardToClient(client);
-    });
+setInterval(() => {
+    calculateScoresOfPlayers();
+    renderScoreBoardToClients();
 }, SCOREBOARD_TICK);
 
 console.log('Server listening on port:', PORT);
