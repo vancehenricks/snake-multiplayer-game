@@ -402,10 +402,6 @@ function updateEntities(entities) {
             entity.id === gEntity.id
         )
 
-        if(entity.type === TYPE.PLAYER && player.id !== entity.id) {
-            console.log({entity})
-        }
-
         return {...gameEntity, ...entity};
 
     }).filter(entity => hasCompleteProperties(entity))
