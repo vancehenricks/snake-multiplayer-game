@@ -291,7 +291,6 @@ function addCellToTable(table, value) {
     table.appendChild(column);
 }
 
-
 function updateScoreBoard() {
     const scoreBoardTable = document.getElementById('scoreBoard');
     scoreBoardTable.innerHTML = '';
@@ -402,7 +401,19 @@ function updateEntities(entities) {
             entity.id === gEntity.id
         )
 
-        return {...gameEntity, ...entity};
+        let updatedEntity = entity;
+
+        if(gameEntity?.tail?.current) {
+            updatedEntity = {
+                ...updatedEntity,
+                tail: {
+                    ...updatedEntity.tail,
+                    current: gameEntity.tail.current,
+                }
+            }
+        }
+
+        return {...gameEntity, ...updatedEntity};
 
     }).filter(entity => hasCompleteProperties(entity))
 
@@ -448,30 +459,34 @@ let keys = {};
 let startGameUpdate = false;
 
 connection.onmessage = ({data}) => {
-const {player: p, entities, type, scoreBoard: sb} = JSON.parse(data);
-//console.log('Server says:', {entities, isPlayer, type})
+    try {
+        const {player: p, entities, type, scoreBoard: sb} = JSON.parse(data);
+        //console.log('Server says:', {entities, isPlayer, type})
 
-    if (type === 'ping') {
-        //console.log('Ping received from server');
-        sendPongToServer();
-        return;
-    }
-    if (type === 'scoreBoard') {
-        //console.log('Scoreboard received from server');
-        scoreBoard = sb;
-        return;
-    }
+        if (type === 'ping') {
+            //console.log('Ping received from server');
+            sendPongToServer();
+            return;
+        }
+        if (type === 'scoreBoard') {
+            //console.log('Scoreboard received from server');
+            scoreBoard = sb;
+            return;
+        }
 
-    if (p) {
-        player = p;
-        gameEntities = entities;
-        sendPlayerNameToServer(player);
-    } else {
-        const updatedEntities = updateEntities(entities);
-        player = getPlayer(updatedEntities);
-        gameEntities = updatedEntities;
-        startGameUpdate = true;
-    }
+        if (p) {
+            player = p;
+            gameEntities = entities;
+            sendPlayerNameToServer(player);
+        } else {
+            const updatedEntities = updateEntities(entities);
+            player = getPlayer(updatedEntities);
+            gameEntities = updatedEntities;
+            startGameUpdate = true;
+        }
+    } catch {
+        console.log('Invalid JSON passed')
+    };
 }
 
 document.addEventListener('keydown', function(event) {

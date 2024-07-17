@@ -40,6 +40,7 @@ let scoreTouched = true;
 function generateEntityProperties(entity) {
     let updatedEntity = {};
     Object.keys(entity.touched).forEach((property) => {
+
         updatedEntity = {
             ...updatedEntity,
             [property]: entity[property]
@@ -103,17 +104,52 @@ function touchListOfKeys (entity) {
     return touched;
 }
 
-function sanitizeEntity(entity) {
+function isValidName ({name}) {
+    if(!name) return false; 
+    if(name.length > 12) return false;
+    if(!new RegExp('^\w+$').test(name)) return false;
+
+    return true;
+}
+
+function isValidDirection ({direction}) {
+    if(!direction) return false
+    if(!direction?.x && !direction?.y) return false;
+    if(direction.x > 1 || direction.x < -1) return false;
+    if(direction.y > 1 || direction.y < -1) return false;
+
+    return true;
+}
+
+function isValidTimeout ({timeout}) {
+    if(!timeout) return false;
+    if(typeof timeout !== Number) return false;
+
+    return true;
+}
+
+function isValidId ({id}, {id: refId}) {
+    if(!id) return false
+    if(id !== refId) return false;
+
+    return true;
+}
+
+function sanitizeEntity(entity, refEntity) {
+
+    if(!isValidId(entity, refEntity)) return null;
+
     let updatedEntity = { id: entity.id }
-    if (entity?.name) {
+
+    if (isValidName(entity)) {
         updatedEntity = {...updatedEntity, name: entity.name,}
     }
 
-    if (entity?.direction) {
+    if (isValidDirection(entity)) {
         updatedEntity = {...updatedEntity, direction: entity.direction,}
     }
 
-    if (entity?.timeout) {
+    if (isValidTimeout(entity)) {
         updatedEntity = {...updatedEntity, timeout: entity.timeout,}
     }
 
@@ -467,6 +503,7 @@ function movePlayerEntities() {
 
             let updatedNodes = addNodeToEntity(newEntity);
             updatedNodes = updateNodePositions(updatedNodes);
+            //updatedNodes = touchNodes(updatedNodes);
             updateEntityFromMap(updatedNodes);
         }
     });
@@ -512,7 +549,7 @@ function getCenterPosition() {
 }
 
 function touchNodes(entity) {
-    return {...entity, touched: { ...entity.touched, nodes: true }}
+    return {...entity, touched: { ...entity.touched, tail: true, id: true, nodes: true }}
 }
 
 function updateGame() {
@@ -544,31 +581,36 @@ function updateScoreBoard() {
 
 app.ws(CHANNEL,(ws, req) => {
     console.log('Client connected, IP:', req.ip);
-    const player = createEntity({
+    const refPlayer = createEntity({
         position: getCenterPosition(),
     });
 
     //console.log('Created Player:', player);
 
-    addEntityToMap(player);
-    renderEverythingToClient(ws, player);
+    addEntityToMap(refPlayer);
+    renderEverythingToClient(ws, refPlayer);
     renderEntitiesToClients({excluding: ws});
 
     ws.on('message',(data) => {
-        const {player, type} = JSON.parse(data);
-        let playerUpdated = sanitizeEntity(player);
-        playerUpdated = updateEntityTimeOut(playerUpdated);
+        try {
+            const {player, type} = JSON.parse(data);
+            let playerUpdated = sanitizeEntity(player, refPlayer);
 
-        if(type === 'pong') {
-            //console.log('Pong received from client, IP:', req.ip);
-            ws.player = playerUpdated;
-            return;
+            if(!playerUpdated) return
+
+            playerUpdated = updateEntityTimeOut(playerUpdated);
+
+            if(type === 'pong') {
+                //console.log('Pong received from client, IP:', req.ip);
+                ws.player = playerUpdated;
+                return;
+            }
+
+            playerUpdated = touchNodes(playerUpdated);
+            updateEntityFromMap(playerUpdated);
+        } catch {
+            console.log('Client ' + req.ip  + ' passed invalid JSON')
         }
-
-        if(!playerUpdated) return
-
-        playerUpdated = touchNodes(playerUpdated);
-        updateEntityFromMap(playerUpdated);
         //console.log('Client says:', pUpdated);
     });
 
