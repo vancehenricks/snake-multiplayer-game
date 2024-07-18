@@ -363,13 +363,20 @@ function movePlayerEntities() {
             const {x, y} = entity.nodes[0];
             const {x: dx, y: dy} = entity.direction;
             
-            const newNode = createNode({x: x - dx * DEFAULT_IDLE_SPEED, 
-                y: y - dy * DEFAULT_IDLE_SPEED});
+            let speed = DEFAULT_IDLE_SPEED+1.3;
+
+            if(Math.abs(dx) > 0 && Math.abs(dy) > 0) {
+                speed = DEFAULT_IDLE_SPEED;
+            }
+
+            const newNode = createNode({x: x - dx * speed, 
+                y: y - dy * speed});
 
             const newEntity = {
                 ...entity,
                 nodes: [newNode, ...entity.nodes.slice(1)]
             };
+
             
             let updatedNodes = addNodeToEntity(newEntity);
             updatedNodes = updateNodePositions(updatedNodes);
@@ -393,6 +400,20 @@ function hasCompleteProperties(entity) {
     return hits === ENTITY_PROPERTIES.length-1;
 }
 
+function updateTail(entity, gameEntity) {
+    if(gameEntity?.tail?.current) {
+        return {
+            ...entity,
+            tail: {
+                ...entity.tail,
+                current: gameEntity.tail.current,
+            }
+        }
+    }
+
+    return entity;
+}
+
 function updateEntities(entities) {
     if (gameEntities.length === 0) return entities;
 
@@ -401,17 +422,7 @@ function updateEntities(entities) {
             entity.id === gEntity.id
         )
 
-        let updatedEntity = entity;
-
-        if(gameEntity?.tail?.current) {
-            updatedEntity = {
-                ...updatedEntity,
-                tail: {
-                    ...updatedEntity.tail,
-                    current: gameEntity.tail.current,
-                }
-            }
-        }
+        let updatedEntity = updateTail(entity, gameEntity);
 
         return {...gameEntity, ...updatedEntity};
 
