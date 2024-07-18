@@ -107,8 +107,7 @@ function touchListOfKeys (entity) {
 function isValidName ({name}) {
     if(!name) return false; 
     if(name.length > 12) return false;
-    if(!new RegExp('^\w+$').test(name)) return false;
-
+    if(!new RegExp(/^\w+$/).test(name)) return false;
     return true;
 }
 
@@ -493,8 +492,14 @@ function movePlayerEntities() {
             const {x, y} = entity.nodes[0];
             const {x: dx, y: dy} = entity.direction;
             
-            const newNode = createNode({x: x - dx * DEFAULT_IDLE_SPEED, 
-                y: y - dy * DEFAULT_IDLE_SPEED});
+            let speed = DEFAULT_IDLE_SPEED+1.3;
+
+            if(Math.abs(dx) > 0 && Math.abs(dy) > 0) {
+                speed = DEFAULT_IDLE_SPEED;
+            }
+
+            const newNode = createNode({x: x - dx * speed, 
+                y: y - dy * speed});
 
             const newEntity = {
                 ...entity,
@@ -503,7 +508,7 @@ function movePlayerEntities() {
 
             let updatedNodes = addNodeToEntity(newEntity);
             updatedNodes = updateNodePositions(updatedNodes);
-            //updatedNodes = touchNodes(updatedNodes);
+            updatedNodes = touchNodes(updatedNodes);
             updateEntityFromMap(updatedNodes);
         }
     });
@@ -601,12 +606,10 @@ app.ws(CHANNEL,(ws, req) => {
             playerUpdated = updateEntityTimeOut(playerUpdated);
 
             if(type === 'pong') {
-                //console.log('Pong received from client, IP:', req.ip);
                 ws.player = playerUpdated;
                 return;
             }
 
-            playerUpdated = touchNodes(playerUpdated);
             updateEntityFromMap(playerUpdated);
         } catch {
             console.log('Client ' + req.ip  + ' passed invalid JSON')
