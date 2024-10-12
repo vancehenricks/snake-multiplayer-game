@@ -112,12 +112,17 @@ function renderFood({id, size, nodes}) {
     }
 }
 
-function renderPlayerHighlight({x, y, size, color}) {
+function renderSnakeHead({entity, isFill=false}) {
+    const node = entity.nodes[0];
+
+    const size = entity.size * 2;
+    const {x, y} = {x: node.x - 3, y: node.y - 5}
+
     ctx.beginPath();
     ctx.lineWidth = 5;
-    ctx.strokeStyle = color;
+    ctx.strokeStyle = entity.color;
     ctx.arc(x + 3, y + 5, size/3, 0, Math.PI * 2, false);
-    ctx.fillStyle = '#f1f1f1';
+    ctx.fillStyle = isFill ? entity.color : '#f1f1f1';
     ctx.stroke();
     ctx.fill();
 }
@@ -125,29 +130,10 @@ function renderPlayerHighlight({x, y, size, color}) {
 function renderSnake(entity) {
     ctx.beginPath();
     entity.nodes.forEach((node, index) => {
-        if(index === 0) {
-            ctx.lineWidth = entity.size * 2;
-            ctx.strokeStyle = entity.color;
-            ctx.lineCap = 'round';
-            ctx.lineTo(node.x, node.y);
-            ctx.stroke();
-            ctx.beginPath();
-        } else if (index > entity.nodes.length-3) {
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.lineWidth = entity.size - 0.5;
-            ctx.strokeStyle = entity.color;
-            ctx.lineCap = 'round';
-            ctx.lineTo(node.x, node.y);
-            ctx.stroke();
-            ctx.beginPath();
-        }
-        else {
-            ctx.lineWidth = entity.size;
-            ctx.strokeStyle = entity.color;
-            ctx.lineCap = 'round';
-            ctx.lineTo(node.x, node.y);
-        }
+        ctx.lineWidth = entity.size;
+        ctx.strokeStyle = entity.color;
+        ctx.lineCap = 'round';
+        ctx.lineTo(node.x, node.y);
     });
     ctx.stroke();
 }
@@ -155,12 +141,8 @@ function renderSnake(entity) {
 
 function renderPlayer() {
     renderSnake(player);
-    const node = player.nodes[0];
-
-    const size = player.size * 2;
-    const {x, y} = {x: node.x - 3, y: node.y - 5}
     
-    renderPlayerHighlight({...player, x, y, size});
+    renderSnakeHead({entity: player});
     renderInvulnerableEffect(player);
 }
 
@@ -189,7 +171,9 @@ function renderEntities() {
             renderFood(entity);
             return;
         }
+
         renderSnake(entity);
+        renderSnakeHead({entity, isFill: true});
         renderInvulnerableEffect(entity);
     });
 
