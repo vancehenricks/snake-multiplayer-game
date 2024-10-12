@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon `http-server -c-1 -p 3000`"
+    "start:dev": "nodemon `http-server -c-1 -p 3000`",
+    "start:prod": "http-server -c-1 -p 3000"
   },
   "keywords": [],
   "author": "",

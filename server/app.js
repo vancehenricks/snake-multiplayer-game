@@ -25,11 +25,22 @@ const STATUS = {
 
 const CHANNEL = '/game';
 
+
+var https = require('https')
+var fs = require('fs')
 const express = require('express');
 var expressWs = require('express-ws');
 
-expressWs = expressWs(express());
-const app = expressWs.app;
+
+//not to push changes to main find a way to hide this path instead
+var options = {
+    key: fs.readFileSync('/etc/letsencrypt/live/snekpvp.lol/privkey.pem'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/snekpvp.lol/fullchain.pem')
+  };
+
+var app = express();
+var server = https.createServer(options, app)
+var expressWs = expressWs(app, server);
 
 const aWss = expressWs.getWss(CHANNEL);
 
@@ -639,4 +650,4 @@ let scoreBoardTimeOutId = setTimeout(function run() {
 
 console.log('Server listening on port:', PORT);
 
-app.listen(PORT)
+server.listen(PORT)

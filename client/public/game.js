@@ -1,9 +1,7 @@
 const DEFAULT_IDLE_SPEED = 5;
 const CLIENT_TICK_MS = 100;
 const ANIMATION_TICK_MS = 10;
-//const IP = 'localhost';
-const IP = '82.197.93.188';
-const PORT = '7541';
+const ADDR = 'wss://snekpvp.lol:7541';
 const CHANNEL = '/game';
 const TYPE = {
     PLAYER: 'player',
@@ -33,12 +31,12 @@ const ENTITY_PROPERTIES = [
 
 function establishConnection() {
     //const server = 'ws://82.197.93.188:7541'
-    const url = new URL(CHANNEL, `ws://${IP}:${PORT}`).toString()
+    const url = new URL(CHANNEL, `${ADDR}`).toString()
     connection = new WebSocket(url)
 
     connection.onerror = error => {
-        console.log(`WebSocket error: ${error}`)
-}
+        console.log(`WebSocket error:`, error)
+    }
 
     connection.onopen = e => {
         console.log('Connected to server');
