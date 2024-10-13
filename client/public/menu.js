@@ -11,6 +11,7 @@ function startGame() {
 
     document.head.appendChild(gameScript);
     document.getElementById('startButton').style.display = 'none';
+    document.getElementById('instruction').style.display = 'block';
     document.getElementById('entityEffects').style.display = 'block';
     document.getElementById('gameCanvas').style.display = 'block';
     document.getElementById('scoreBoardGroup').style.display = 'block';
@@ -109,6 +110,7 @@ function startup() {
     document.getElementById('entityEffects').style.display = 'none';
     restorePlayerName();
     document.getElementById('gameCanvas').style.display = 'none';
+    document.getElementById('instruction').style.display = 'none';
     document.getElementById('scoreBoardGroup').style.display = 'none';
     document.getElementById('tryAgainButton').style.display = 'none';
     document.getElementById('returnToMenuButton').style.display = 'none';
