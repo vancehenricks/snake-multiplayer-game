@@ -4,7 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start:dev": " ENV='development' nodemon app.js",
+    "start:dev": "ENV='development' nodemon app.js",
     "start": "npm ci ; nodemon app.js"
   },
   "keywords": [],
