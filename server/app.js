@@ -1,4 +1,3 @@
-const PORT = 7541;
 const GAME_TICK_MS = 100;
 const HEARTBEAT_MS = 10000;
 const SCOREBOARD_MS = 1000;
@@ -27,25 +26,29 @@ const CHANNEL = '/game';
 
 
 var https = require('https')
+var http = require('http')
 var fs = require('fs')
 const express = require('express');
 var expressWs = require('express-ws');
 require('dotenv').config();
 
-const options = {
-    key: fs.readFileSync(process.env.KEY_PATH),
-    cert: fs.readFileSync(process.env.CERT_PATH)
+function createOptions () {
+
+    return { 
+        key: fs.readFileSync(process.env.KEY_PATH),
+        cert: fs.readFileSync(process.env.CERT_PATH)
+    }
 };
 
 var app = express();
-var server = https.createServer(options, app)
+var server = process.env.ENV !== 'development' ? https.createServer(createOptions(), app): http.createServer(app)
 var expressWs = expressWs(app, server);
 
 const aWss = expressWs.getWss(CHANNEL);
 
-server.listen(PORT)
+server.listen(process.env.PORT)
 
-console.log('Server listening on port:', PORT);
+console.log('Server listening on port:', process.env.PORT);
 
 let gameEntities = [];
 let scoreBoard = [];
@@ -326,17 +329,6 @@ function stopWhenOutOfBounds(entity) {
     }
     return entity;
 }
-
-/*function isDirectionDiagonal(entity) {
-    return entity.direction.x !== 0 && entity.direction.y !== 0;
-}*/
-
-/*function createColliderNode(entity, node) {
-    const {x, y} = node;
-    const {x: dx, y: dy} = entity.direction;
-    const newNode = createNode({x: x - dx * entity.size, y: y - dy * entity.size});
-    return newNode;
-}*/
 
 function hasIntersect(entity1, entity2) {
 

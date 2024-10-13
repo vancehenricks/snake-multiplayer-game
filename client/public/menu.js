@@ -5,11 +5,16 @@ function startGame() {
         return;
     }
 
-    var script = document.createElement("script"); 
-    script.id = 'gameScript';
-    script.src = 'game.js';
+    var gameScript = document.createElement("script"); 
+    gameScript.id = 'gameScript';
+    gameScript.src = 'game.js';
 
-    document.head.appendChild(script);
+    var configScript = document.createElement("script"); 
+    configScript.id = 'configScript';
+    configScript.src = 'config.js';
+
+    document.head.appendChild(gameScript);
+    document.head.appendChild(configScript);
     document.getElementById('startButton').style.display = 'none';
     document.getElementById('entityEffects').style.display = 'block';
     document.getElementById('gameCanvas').style.display = 'block';
@@ -86,7 +91,6 @@ function restorePlayerName() {
 }
 
 function gameOver() {
-    console.log('Game over');
     document.getElementById('playerNameInput').disabled = false;
     document.getElementById('tryAgainButton').style.display = 'block';
     document.getElementById('returnToMenuButton').style.display = 'block';

@@ -1,7 +1,6 @@
 const DEFAULT_IDLE_SPEED = 5;
 const CLIENT_TICK_MS = 100;
 const ANIMATION_TICK_MS = 10;
-const ADDR = 'wss://snekpvp.lol:7541';
 const CHANNEL = '/game';
 const TYPE = {
     PLAYER: 'player',
@@ -30,7 +29,6 @@ const ENTITY_PROPERTIES = [
 ]
 
 function establishConnection() {
-    //const server = 'ws://82.197.93.188:7541'
     const url = new URL(CHANNEL, `${ADDR}`).toString()
     connection = new WebSocket(url)
 
