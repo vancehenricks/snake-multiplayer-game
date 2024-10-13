@@ -60,15 +60,6 @@ function sendToServer(message) {
     //console.info('Sending message to server');
 }
 
-function sendPongToServer() {
-    if (!connection) {
-        console.error('You have to call establishConnection() first');
-        return;
-        }
-        connection.send(JSON.stringify({ type: 'pong', player: { id: player.id, timeout: player.timeout } }));
-        //console.info('Sending pong to server');
-}
-
 function sendPlayerDirectionToServer(entity) {
     sendToServer({ player: { id: entity.id, direction: entity.direction}})
 }
@@ -127,7 +118,7 @@ function renderSnakeHead({entity, isFill=false}) {
 
 function renderSnake(entity) {
     ctx.beginPath();
-    entity.nodes.forEach((node, index) => {
+    entity.nodes.forEach(node => {
         ctx.lineWidth = entity.size;
         ctx.strokeStyle = entity.color;
         ctx.lineCap = 'round';
@@ -451,18 +442,11 @@ let startGameUpdate = false;
 
 connection.onmessage = ({data}) => {
     try {
-        const {player: p, entities, type, scoreBoard: sb} = JSON.parse(data);
-        //console.log('Server says:', {entities, isPlayer, type})
+        const {player: p, entities, scoreBoard: sb} = JSON.parse(data);
+        console.log('Server says:', {entities, p, sb})
 
-        if (type === 'ping') {
-            //console.log('Ping received from server');
-            sendPongToServer();
-            return;
-        }
-        if (type === 'scoreBoard') {
-            //console.log('Scoreboard received from server');
+        if (sb) {
             scoreBoard = sb;
-            return;
         }
 
         if (p) {
@@ -475,8 +459,8 @@ connection.onmessage = ({data}) => {
             gameEntities = updatedEntities;
             startGameUpdate = true;
         }
-    } catch {
-        console.log('Invalid JSON passed')
+    } catch (err) {
+        console.error(err);
     };
 }
 

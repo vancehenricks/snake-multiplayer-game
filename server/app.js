@@ -1,5 +1,4 @@
 const GAME_TICK_MS = 100;
-const HEARTBEAT_MS = 10000;
 const SCOREBOARD_MS = 1000;
 const DEFAULT_ENTITY_SIZE = 5;
 const DEFAULT_IDLE_SPEED = 5;
@@ -95,8 +94,24 @@ function untouchedGameEntities() {
     });
 }
 
+function removeClientFromGameEntities() {
+    return [...gameEntities].map(gameEntity => {
+        return {
+            ...gameEntity,
+            client: undefined,
+        }
+    })
+}
+
+function removeClientFromGameEntity(entity) {
+    return {
+        ...entity,
+        client: undefined,
+    }
+}
+
 function renderEverythingToClient(client, player) {
-    client.send(JSON.stringify({player, entities: gameEntities}));
+    client.send(JSON.stringify({player: removeClientFromGameEntity(player), entities: removeClientFromGameEntities(), scoreBoard}));
 }
 
 function addEntityToMap(entity) {
@@ -270,13 +285,14 @@ function createEntity({
     tail=createTail({current: 0, max: 4}),
     direction=generateRandomDirection(),
     invulnerable=createInvulnerableState(),
-    timeout= Date.now(),
-    status=STATUS.ALIVE}={}) {
+    timeout=Date.now(),
+    status=STATUS.ALIVE,
+    client=undefined}={}) {
 
     const nodes = [createNode(position)];
     const touched=touchAllProperties();
 
-    return {type, name, id, color, size, nodes, score, direction, invulnerable, tail, status, timeout, touched};
+    return {type, name, id, color, size, nodes, score, direction, invulnerable, tail, status, timeout, touched, client};
 }
 
 function foodEntitiesCount() {
@@ -466,14 +482,15 @@ function markDeadForIdleTimedOutEntities() {
 function removeDeadEntities() {
     gameEntities = [...gameEntities].filter((entity) => {
         if(entity.status === STATUS.DEAD) {
+            if(entity.type === TYPE.PLAYER) {
+                console.log('Terminating client IP:', entity.client._socket.remoteAddress);
+                entity.client.terminate();
+            }
+
             return false;
         }
         return true;
     });
-}
-
-function sendPing(ws) {
-    ws.send(JSON.stringify({type: 'ping'}));
 }
 
 function checkForIntersect() {
@@ -546,7 +563,7 @@ function calculateScoresOfPlayers() {
 function renderScoreBoardToClients() {
     aWss.clients.forEach((client) => {
         if(scoreTouched) {
-            client.send(JSON.stringify({type: 'scoreBoard', scoreBoard}));
+            client.send(JSON.stringify({scoreBoard}));
         }
     })
     scoreTouched = false;
@@ -573,18 +590,6 @@ function updateGame() {
     markDeadForIdleTimedOutEntities();
 }
 
-function updateHeartBeat() {
-    aWss.clients.forEach((client) => {
-        if(client?.player && isIdleTimedOut(client?.player)) {
-
-            console.log('Terminating client IP:', client._socket.remoteAddress);
-            return client.terminate();
-        } else {
-            sendPing(client);
-        }
-    });
-}
-
 function updateScoreBoard() {
     calculateScoresOfPlayers();
     renderScoreBoardToClients();
@@ -594,9 +599,8 @@ app.ws(CHANNEL,(ws, req) => {
     console.log('Client connected, IP:', req.ip);
     const refPlayer = createEntity({
         position: getCenterPosition(),
-    });
-
-    //console.log('Created Player:', player);
+        client: ws,
+    }); //can become outdated real fast, use only for reference
 
     addEntityToMap(refPlayer);
     renderEverythingToClient(ws, refPlayer);
@@ -604,21 +608,17 @@ app.ws(CHANNEL,(ws, req) => {
 
     ws.on('message',(data) => {
         try {
-            const {player, type} = JSON.parse(data);
+            const {player} = JSON.parse(data);
             let playerUpdated = sanitizeEntity(player, refPlayer);
 
             if(!playerUpdated) return
 
             playerUpdated = updateEntityTimeOut(playerUpdated);
 
-            if(type === 'pong') {
-                ws.player = playerUpdated;
-                return;
-            }
-
             updateEntityFromMap(playerUpdated);
-        } catch {
-            console.log('Client ' + req.ip  + ' passed invalid JSON')
+        } catch (err) {
+            console.error('Client ' + req.ip);
+            console.error(err);
         }
         //console.log('Client says:', pUpdated);
     });
@@ -628,10 +628,6 @@ app.ws(CHANNEL,(ws, req) => {
     });
 });
 
-let heartBeatTimeOutId = setTimeout(function run() {
-    updateHeartBeat();
-    heartBeatTimeOutId = setTimeout(run, HEARTBEAT_MS);
-}, HEARTBEAT_MS);
 
 let tickTimeOutId = setTimeout(function run() {
     updateGame();
