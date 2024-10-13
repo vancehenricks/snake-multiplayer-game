@@ -30,19 +30,22 @@ var https = require('https')
 var fs = require('fs')
 const express = require('express');
 var expressWs = require('express-ws');
+require('dotenv').config();
 
-
-//not to push changes to main find a way to hide this path instead
-var options = {
-    key: fs.readFileSync('/etc/letsencrypt/live/snekpvp.lol/privkey.pem'),
-    cert: fs.readFileSync('/etc/letsencrypt/live/snekpvp.lol/fullchain.pem')
-  };
+const options = {
+    key: fs.readFileSync(process.env.KEY_PATH),
+    cert: fs.readFileSync(process.env.CERT_PATH)
+};
 
 var app = express();
 var server = https.createServer(options, app)
 var expressWs = expressWs(app, server);
 
 const aWss = expressWs.getWss(CHANNEL);
+
+server.listen(PORT)
+
+console.log('Server listening on port:', PORT);
 
 let gameEntities = [];
 let scoreBoard = [];
@@ -647,7 +650,3 @@ let scoreBoardTimeOutId = setTimeout(function run() {
     updateScoreBoard();
     scoreBoardTimeOutId = setTimeout(run, SCOREBOARD_MS)
 }, SCOREBOARD_MS);
-
-console.log('Server listening on port:', PORT);
-
-server.listen(PORT)

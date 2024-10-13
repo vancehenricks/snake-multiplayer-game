@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start:dev": "nodemon `http-server -c-1 -p 3000`",
-    "start:prod": "http-server -c-1 -p 3000"
+    "start": "npm ci ; http-server -c-1 -p 3000"
   },
   "keywords": [],
   "author": "",
