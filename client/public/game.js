@@ -452,7 +452,7 @@ connection.onmessage = ({data}) => {
             player = p;
             gameEntities = entities;
             sendPlayerNameToServer(player);
-        } else {
+        } else if (entities) {
             const updatedEntities = updateEntities(entities);
             player = getPlayer(updatedEntities);
             gameEntities = updatedEntities;

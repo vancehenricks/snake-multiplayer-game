@@ -9,11 +9,6 @@ function startGame() {
     gameScript.id = 'gameScript';
     gameScript.src = 'game.js';
 
-    var configScript = document.createElement("script"); 
-    configScript.id = 'configScript';
-    configScript.src = 'config.js';
-
-    document.head.appendChild(configScript);
     document.head.appendChild(gameScript);
     document.getElementById('startButton').style.display = 'none';
     document.getElementById('entityEffects').style.display = 'block';
