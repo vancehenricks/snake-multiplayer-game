@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "echo \"const ADDR = 'wss:\/\/snekpvp.lol:7541';\" > public/config.js ; nodemon `http-server -c-1 -p 3000`",
-    "start:dev": "echo \"const ADDR = 'ws:\/\/localhost:7541';\" > public/config.js ; npm ci ; http-server -c-1 -p 3000"
+    "start:dev": "echo \"var ADDR = 'ws:\/\/localhost:7541';\" > public/config.js ; nodemon `http-server -c-1 -p 3000`",
+    "start": "echo \"var ADDR = 'wss:\/\/snekpvp.lol:7541';\" > public/config.js ; npm ci ; nodemon `http-server -c-1 -p 3000`"
   },
   "keywords": [],
   "author": "",

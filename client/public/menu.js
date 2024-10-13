@@ -13,8 +13,8 @@ function startGame() {
     configScript.id = 'configScript';
     configScript.src = 'config.js';
 
-    document.head.appendChild(gameScript);
     document.head.appendChild(configScript);
+    document.head.appendChild(gameScript);
     document.getElementById('startButton').style.display = 'none';
     document.getElementById('entityEffects').style.display = 'block';
     document.getElementById('gameCanvas').style.display = 'block';
