@@ -443,7 +443,6 @@ let startGameUpdate = false;
 connection.onmessage = ({data}) => {
     try {
         const {player: p, entities, scoreBoard: sb} = JSON.parse(data);
-        console.log('Server says:', {entities, p, sb})
 
         if (sb) {
             scoreBoard = sb;
