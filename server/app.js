@@ -49,10 +49,6 @@ server.listen(process.env.PORT)
 
 console.log('Server listening on port:', process.env.PORT);
 
-let gameEntities = [];
-let scoreBoard = [];
-let scoreTouched = true;
-
 function generateEntityProperties(entity) {
     let updatedEntity = {};
     Object.keys(entity.touched).forEach((property) => {
@@ -70,9 +66,9 @@ function isTouchedEmpty(entity) {
     return Object.keys(entity?.touched).length > 0;
 }
 
-function renderEntitiesToClients(options) {
+function renderEntitiesToClients(room, options) {
 
-    const touchedEntities = [...gameEntities].filter(gameEntity =>
+    const touchedEntities = [...room.gameEntities].filter(gameEntity =>
         isTouchedEmpty(gameEntity)
     )
     const unusedPropertiesRemoved = touchedEntities.map(entity => generateEntityProperties(entity));
@@ -85,8 +81,8 @@ function renderEntitiesToClients(options) {
     }
 }
 
-function untouchedGameEntities() {
-    gameEntities = [...gameEntities].map(entity => {
+function untouchedGameEntities(room) {
+    room.gameEntities = [...room.gameEntities].map(entity => {
         return {
             ...entity,
             touched: {},
@@ -114,12 +110,8 @@ function renderEverythingToClient(client, player) {
     client.send(JSON.stringify({player: removeClientFromGameEntity(player), entities: removeClientFromGameEntities(), scoreBoard}));
 }
 
-function addEntityToMap(entity) {
-    gameEntities = [...gameEntities, entity];
-}
-
-function updateEntityFromMap(entity) {
-    gameEntities = [...gameEntities].map(gameEntity => {
+function updateEntityFromMap(room, entity) {
+    room.gameEntities = [...room.gameEntities].map(gameEntity => {
         if(gameEntity.id === entity.id) {
            return { ...gameEntity, ...entity };
         }
@@ -274,7 +266,35 @@ function touchAllProperties() {
     }
 }
 
+let rooms = {};
+
+function createRoom(roomId) {
+    rooms[roomId] = {
+        roomId,
+        gameEntities: [],
+        scoreBoard: [],
+        scoreTouched: true,
+        tickTimeOutId: null,
+        scoreBoardTimeOutId: null,
+    };
+}
+
+function deleteRoom(room) {
+    delete rooms[room.roomId]
+}
+
+function getRoom(roomId) {
+    return rooms[roomId];
+}
+
+function addEntityToRoom(room, entity) {
+    if (room) {
+        room.gameEntities = [...room.gameEntities, entity];
+    }
+}
+
 function createEntity({
+    roomId,
     type=TYPE.PLAYER,
     id=generateId(),
     position=generateRandomPosition(),
@@ -292,22 +312,30 @@ function createEntity({
     const nodes = [createNode(position)];
     const touched=touchAllProperties();
 
-    return {type, name, id, color, size, nodes, score, direction, invulnerable, tail, status, timeout, touched, client};
+    const entity = {type, name, id, color, size, nodes, score, direction, invulnerable, tail, status, timeout, touched, client};
+
+    if (roomId) {
+        const room = getRoom(roomId);
+        addEntityToRoom(room, entity);
+    }
+
+    return entity;
 }
 
-function foodEntitiesCount() {
-    return gameEntities.filter((entity) => entity.type === TYPE.FOOD).length;
+function foodEntitiesCount(room) {
+    return room ? room.gameEntities.filter((entity) => entity.type === TYPE.FOOD).length : 0;
 }
 
 function generateRandomRange(min, max) {
     return Math.floor((Math.random() * (max - min + 1)) + min);
  }
 
-function spawnFoodEntities() {
-    if(foodEntitiesCount() > MAX_FOOD) return;
-    const score = generateRandomRange(1, 3);
+ function spawnFoodEntities(room) {
+    if (!room || foodEntitiesCount(room) > MAX_FOOD) return;
 
+    const score = generateRandomRange(1, 3);
     const food = createEntity({
+        roomId: room.roomId,
         type: TYPE.FOOD,
         name: 'Food',
         tail: createTail({current: 0, max: 0}),
@@ -318,8 +346,7 @@ function spawnFoodEntities() {
         score,
     });
 
-    //console.log('Spawning food:', food);
-    addEntityToMap(food);
+    addEntityToRoom(room, food);
 }
 
 
@@ -469,8 +496,8 @@ function isInvulnerableTimedOut(entity) {
 
 }
 
-function markDeadForIdleTimedOutEntities() {
-    gameEntities = [...gameEntities].map((entity) => {
+function markDeadForIdleTimedOutEntities(room) {
+    room.gameEntities = [...room.gameEntities].map((entity) => {
         if(isIdleTimedOut(entity)) {
             //console.log('Removing entity:', entity);
             return killEntity(entity);
@@ -479,8 +506,8 @@ function markDeadForIdleTimedOutEntities() {
     });
 }
 
-function removeDeadEntities() {
-    gameEntities = [...gameEntities].filter((entity) => {
+function removeDeadEntities(room) {
+    room.gameEntities = [...room.gameEntities].filter((entity) => {
         if(entity.status === STATUS.DEAD) {
             if(entity.type === TYPE.PLAYER) {
                 console.log('Terminating client IP:', entity.client._socket.remoteAddress);
@@ -493,8 +520,8 @@ function removeDeadEntities() {
     });
 }
 
-function checkForIntersect() {
-    const entities = [...gameEntities];
+function checkForIntersect(room) {
+    const entities = [...room.gameEntities];
     entities.forEach((entity) => {
         let updatedEntity = stopWhenOutOfBounds(entity);
         entities.forEach((gameEntity) => {
@@ -505,12 +532,12 @@ function checkForIntersect() {
             updatedEntity = intersectPlayerToPlayer({entity: updatedEntity, gameEntity, hits});
             updatedEntity = intersectSelf({entity: updatedEntity, gameEntity, hits});
         });
-        updateEntityFromMap(updatedEntity);
+        updateEntityFromMap(room, updatedEntity);
     });
 }
 
-function movePlayerEntities() {
-    [...gameEntities].forEach((entity) => {
+function movePlayerEntities(room) {
+    [...room.gameEntities].forEach((entity) => {
         if(entity.type === TYPE.PLAYER) {
             const {x, y} = entity.nodes[0];
             const {x: dx, y: dy} = entity.direction;
@@ -532,7 +559,7 @@ function movePlayerEntities() {
             let updatedNodes = addNodeToEntity(newEntity);
             updatedNodes = updateNodePositions(updatedNodes);
             updatedNodes = touchNodes(updatedNodes);
-            updateEntityFromMap(updatedNodes);
+            updateEntityFromMap(room, updatedNodes);
         }
     });
 }
@@ -541,18 +568,18 @@ function createScoreEntry({id, name, score}) {
     return {id, name, score, date: Date.now()};
 }
 
-function sortEntryToScoreBoard(scoreEntry) {;
-    let initialScoreBoard = removeInScoreBoard(scoreEntry);
+function sortEntryToScoreBoard(room, scoreEntry) {;
+    let initialScoreBoard = removeInScoreBoard(room, scoreEntry);
     initialScoreBoard = [...initialScoreBoard, scoreEntry];
-    scoreBoard = initialScoreBoard.sort((a, b) => b.score - a.score).slice(0, MAX_SCORES_TO_SHOW);
+    room.scoreBoard = initialScoreBoard.sort((a, b) => b.score - a.score).slice(0, MAX_SCORES_TO_SHOW);
 }
 
-function removeInScoreBoard(scoreEntry) {
-    return [...scoreBoard].filter((entry) => entry.id !== scoreEntry.id);
+function removeInScoreBoard(room, scoreEntry) {
+    return [...room.scoreBoard].filter((entry) => entry.id !== scoreEntry.id);
 }
 
-function calculateScoresOfPlayers() {
-    [...gameEntities].forEach((entity) => {
+function calculateScoresOfPlayers(room) {
+    [...room.gameEntities].forEach((entity) => {
         if(entity.type === TYPE.PLAYER) {
              const scoreEntry = createScoreEntry({...entity});
             sortEntryToScoreBoard(scoreEntry);
@@ -580,61 +607,121 @@ function touchNodes(entity) {
     return {...entity, touched: { ...entity.touched, tail: true, id: true, nodes: true }}
 }
 
-function updateGame() {
-    spawnFoodEntities();
-    checkForIntersect();
-    movePlayerEntities();
-    renderEntitiesToClients();
-    untouchedGameEntities();
-    removeDeadEntities();
-    markDeadForIdleTimedOutEntities();
+function updateGame(room) {
+    spawnFoodEntities(room);
+    checkForIntersect(room);
+    movePlayerEntities(room);
+    renderEntitiesToClients(room);
+    untouchedGameEntities(room);
+    removeDeadEntities(room);
+    markDeadForIdleTimedOutEntities(room);
 }
 
-function updateScoreBoard() {
-    calculateScoresOfPlayers();
-    renderScoreBoardToClients();
+function updateScoreBoard(room) {
+    calculateScoresOfPlayers(room);
+    renderScoreBoardToClients(room);
 }
 
-app.ws(CHANNEL,(ws, req) => {
-    console.log('Client connected, IP:', req.ip);
+function updateEntityFromRoom(room, entity) {
+    if (room) {
+        room.gameEntities = room.gameEntities.map(gameEntity => {
+            if (gameEntity.id === entity.id) {
+                return { ...gameEntity, ...entity };
+            }
+            return gameEntity;
+        });
+    }
+}
+
+function countPlayerEntities(room) {
+    return room.gameEntities.filter(entity => entity.type === TYPE.PLAYER).length;
+}
+
+function startGameLoop(room) {
+    if (!room) return;
+
+    const hasActivePlayers = countPlayerEntities(room) > 0;
+
+    function gameTick() {
+        if (!hasActivePlayers) {
+            stopGameLoop(room.roomId);
+            deleteRoom(room);
+            console.log(`Room ${roomId} has been removed due to no players.`);
+            return;
+        }
+
+        updateGame(room.roomId);
+        room.tickTimeOutId = setTimeout(gameTick, GAME_TICK_MS);
+    }
+
+    function scoreBoardTick() {
+        if (hasActivePlayers) {
+            updateScoreBoard(roomId);
+            room.scoreBoardTimeOutId = setTimeout(scoreBoardTick, SCOREBOARD_MS);
+        }
+    }
+
+    gameTick();
+    scoreBoardTick();
+}
+
+function stopGameLoop(room) {
+    if (room) {
+        if (room.tickTimeOutId) {
+            clearTimeout(room.tickTimeOutId);
+            room.tickTimeOutId = null;
+        }
+        if (room.scoreBoardTimeOutId) {
+            clearTimeout(room.scoreBoardTimeOutId);
+            room.scoreBoardTimeOutId = null;
+        }
+    }
+}
+
+app.ws(CHANNEL, (ws, req) => {
+    const roomId = req.query.roomId || 'default';
+    let room = getRoom(roomId);
+
+    if (!room) {
+        createRoom(roomId);
+        room = getRoom(roomId);
+        startGameLoop(room);
+    }
+
+    console.log('Client connected to room:', roomId, 'IP:', req.ip);
     const refPlayer = createEntity({
+        roomId,
         position: getCenterPosition(),
         client: ws,
-    }); //can become outdated real fast, use only for reference
+    });
 
-    addEntityToMap(refPlayer);
     renderEverythingToClient(ws, refPlayer);
-    renderEntitiesToClients({excluding: ws});
+    renderEntitiesToClients(room, {excluding: ws});
 
-    ws.on('message',(data) => {
+    ws.on('message', (data) => {
         try {
             const {player} = JSON.parse(data);
             let playerUpdated = sanitizeEntity(player, refPlayer);
 
-            if(!playerUpdated) return
+            if (!playerUpdated) return;
 
             playerUpdated = updateEntityTimeOut(playerUpdated);
-
-            updateEntityFromMap(playerUpdated);
+            updateEntityFromRoom(room, playerUpdated);
         } catch (err) {
             console.error('Client ' + req.ip);
             console.error(err);
         }
-        //console.log('Client says:', pUpdated);
     });
 
-    ws.on('close',() => {
-        console.log('Client disconnected, IP:', req.ip);
+    ws.on('close', () => {
+        console.log('Client disconnected from room:', roomId, 'IP:', req.ip);
+        if (room) {
+            room.gameEntities = room.gameEntities.filter(entity => entity.client !== ws);
+            if (room.gameEntities.length === 0) {
+                stopGameLoop(room);
+                deleteRoom(room);
+                console.log(`Room ${roomId} has been removed due to no players.`);
+            }
+        }
     });
 });
-
-
-let tickTimeOutId = setTimeout(function run() {
-    updateGame();
-    tickTimeOutId = setTimeout(run, GAME_TICK_MS);
-}, GAME_TICK_MS);
-
-let scoreBoardTimeOutId = setTimeout(function run() {
-    updateScoreBoard();
-    scoreBoardTimeOutId = setTimeout(run, SCOREBOARD_MS)
-}, SCOREBOARD_MS);
