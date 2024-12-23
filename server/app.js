@@ -3,6 +3,7 @@ const SCOREBOARD_MS = 1000;
 const DEFAULT_ENTITY_SIZE = 5;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
+const GAME_TIME_MS = 300000;
 const DEFAULT_INVULNERABLE_TIMEOUT_MS = 5000;
 const MAX_SCORES_TO_SHOW = 12;
 const MAX_FOOD = 10;
@@ -106,8 +107,9 @@ function removeClientFromGameEntity(entity) {
     }
 }
 
-function renderEverythingToClient(client, player) {
-    client.send(JSON.stringify({player: removeClientFromGameEntity(player), entities: removeClientFromGameEntities(), scoreBoard}));
+function renderEverythingToClient(room, client, player) {
+
+    client.send(JSON.stringify({player: removeClientFromGameEntity(player), entities: removeClientFromGameEntities(), scoreBoard, roomId: room.roomId, gameTimeLeft: room.gameTimeLeft}));
 }
 
 function updateEntityFromMap(room, entity) {
@@ -276,6 +278,7 @@ function createRoom(roomId) {
         scoreTouched: true,
         tickTimeOutId: null,
         scoreBoardTimeOutId: null,
+        gameTimeLeft: GAME_TIME_MS 
     };
 }
 
@@ -607,7 +610,12 @@ function touchNodes(entity) {
     return {...entity, touched: { ...entity.touched, tail: true, id: true, nodes: true }}
 }
 
+function updateGameTimeLeft(room) {
+    room.gameTimeLeft -= GAME_TICK_MS;
+}
+
 function updateGame(room) {
+    updateGameTimeLeft(room);
     spawnFoodEntities(room);
     checkForIntersect(room);
     movePlayerEntities(room);
@@ -643,14 +651,14 @@ function startGameLoop(room) {
     const hasActivePlayers = countPlayerEntities(room) > 0;
 
     function gameTick() {
-        if (!hasActivePlayers) {
+        if (!hasActivePlayers || room.gameTimeLeft <= 0) {
             stopGameLoop(room.roomId);
             deleteRoom(room);
             console.log(`Room ${roomId} has been removed due to no players.`);
             return;
         }
 
-        updateGame(room.roomId);
+        updateGame(room);
         room.tickTimeOutId = setTimeout(gameTick, GAME_TICK_MS);
     }
 
@@ -695,7 +703,7 @@ app.ws(CHANNEL, (ws, req) => {
         client: ws,
     });
 
-    renderEverythingToClient(ws, refPlayer);
+    renderEverythingToClient(room, ws, refPlayer);
     renderEntitiesToClients(room, {excluding: ws});
 
     ws.on('message', (data) => {
