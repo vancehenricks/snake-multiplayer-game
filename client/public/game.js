@@ -29,7 +29,7 @@ const ENTITY_PROPERTIES = [
 ]
 
 function establishConnection() {
-    const url = new URL(CHANNEL, `${ADDR}`).toString()
+    const url = new URL(CHANNEL, `${localhost}`).toString()
     connection = new WebSocket(url)
 
     connection.onerror = error => {

@@ -44,6 +44,14 @@ var app = express();
 var server = process.env.ENV !== 'development' ? https.createServer(createOptions(), app): http.createServer(app)
 var expressWs = expressWs(app, server);
 
+const path = require('path');
+
+app.use(express.static(path.join(__dirname, 'client/public')));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client/public', 'index.html'));
+});
+
 const aWss = expressWs.getWss(CHANNEL);
 
 server.listen(process.env.PORT)
@@ -270,7 +278,7 @@ function touchAllProperties() {
 
 let rooms = {};
 
-function createRoom(roomId) {
+function createRoom(roomId, creator) {
     rooms[roomId] = {
         roomId,
         gameEntities: [],
@@ -278,7 +286,10 @@ function createRoom(roomId) {
         scoreTouched: true,
         tickTimeOutId: null,
         scoreBoardTimeOutId: null,
-        gameTimeLeft: GAME_TIME_MS 
+        gameTimeLeft: GAME_TIME_MS,
+        creator: creator,
+        gameStarted: true,
+
     };
 }
 
@@ -687,13 +698,12 @@ function stopGameLoop(room) {
 }
 
 app.ws(CHANNEL, (ws, req) => {
-    const roomId = req.query.roomId || 'default';
+    const roomId = req.query.roomId;
     let room = getRoom(roomId);
 
     if (!room) {
-        createRoom(roomId);
+        createRoom(roomId, playerName);
         room = getRoom(roomId);
-        startGameLoop(room);
     }
 
     console.log('Client connected to room:', roomId, 'IP:', req.ip);
@@ -708,13 +718,18 @@ app.ws(CHANNEL, (ws, req) => {
 
     ws.on('message', (data) => {
         try {
-            const {player} = JSON.parse(data);
+            const {player, startGame } = JSON.parse(data);
             let playerUpdated = sanitizeEntity(player, refPlayer);
 
             if (!playerUpdated) return;
 
             playerUpdated = updateEntityTimeOut(playerUpdated);
             updateEntityFromRoom(room, playerUpdated);
+
+            if (startGame && !room.gameStarted) {
+                room.gameStarted = true;
+                startGameLoop(room);
+            }
         } catch (err) {
             console.error('Client ' + req.ip);
             console.error(err);
@@ -724,8 +739,8 @@ app.ws(CHANNEL, (ws, req) => {
     ws.on('close', () => {
         console.log('Client disconnected from room:', roomId, 'IP:', req.ip);
         if (room) {
-            room.gameEntities = room.gameEntities.filter(entity => entity.client !== ws);
-            if (room.gameEntities.length === 0) {
+            const otherEntities = room.gameEntities.filter(entity => entity.client !== ws);
+            if (otherEntities.length <= 0) {
                 stopGameLoop(room);
                 deleteRoom(room);
                 console.log(`Room ${roomId} has been removed due to no players.`);
