@@ -1,7 +1,12 @@
 
-function startGame() {
+function createRoom() {
     if(document.getElementById('playerNameInput').value === '') {
         alert('Please enter a name');
+        return;
+    }
+
+    if(document.getElementById('roomIdInput').value === '') {
+        alert('Please enter a roomId');
         return;
     }
 
@@ -9,13 +14,29 @@ function startGame() {
     gameScript.id = 'gameScript';
     gameScript.src = 'game.js';
 
+    let url =saveRoomId(window.location.href);
+
+    window.history.pushState('Waiting Room', '', url);
+
     document.head.appendChild(gameScript);
-    document.getElementById('startButton').style.display = 'none';
+    document.getElementById('createRoomButton').style.display = 'none';
+    document.getElementById('startGameButton').style.display = 'block';
     document.getElementById('instruction').style.display = 'block';
-    document.getElementById('entityEffects').style.display = 'block';
     document.getElementById('gameCanvas').style.display = 'block';
-    document.getElementById('scoreBoardGroup').style.display = 'block';
     document.getElementById('playerNameInput').disabled = true;
+    document.getElementById('roomIdInput').disabled = true;
+    document.getElementById('scoreLabel').style.display = 'none';
+    document.getElementById('startGameButton').addEventListener('click', startGame);
+}
+
+function startGame() {
+    document.getElementById('scoreBoardGroup').style.display = 'block';
+    document.getElementById('scoreLabel').style.display = 'block';
+    document.getElementById('startGameButton').style.display = 'none';
+    document.getElementById('entityEffects').style.display = 'block';
+    document.getElementById('timeLeftLabel').style.display = 'block';
+    startGameLoop();
+    
 }
 
 function addParametersToUrl({param, value, url}) {
@@ -51,6 +72,7 @@ function tryAgain() {
     }
 
     let url = savePlayerName(window.location.href);
+    url = saveRoomId(url);
     url = addParametersToUrl({
         url, 
         param: 'startGameRightAway',
@@ -61,6 +83,7 @@ function tryAgain() {
 
 function returnToMenu() {
      let url= savePlayerName(window.location.href);
+     url = saveRoomId(url);
      url = preserveScore(url);
      url = addParametersToUrl({
         url, 
@@ -77,6 +100,15 @@ function savePlayerName(url) {
         value: playerName});
 }
 
+function saveRoomId(url) {
+    const roomId = document.getElementById('roomIdInput').value;
+    return addParametersToUrl({
+        url,
+        param: 'roomId',
+        value: roomId
+    })
+}
+
 function restorePlayerName() {
     const playerName = getParametersValueFromUrl('playerName');
     if (playerName) {
@@ -86,8 +118,20 @@ function restorePlayerName() {
     }
 }
 
+
+function restoreRoomId() {
+    const roomId = getParametersValueFromUrl('roomId');
+    if(roomId) {
+        document.getElementById('roomIdInput').value = roomId;
+    } else {
+        document.getElementById('roomIdInput').value = generateRandomRoomId();
+    }
+}
+
 function gameOver() {
     document.getElementById('playerNameInput').disabled = false;
+    document.getElementById('timeLeftLabel').style.display = 'none';
+    document.getElementById('roomIdInput').disabled = false;
     document.getElementById('tryAgainButton').style.display = 'block';
     document.getElementById('returnToMenuButton').style.display = 'block';
     document.getElementById('entityEffects').style.display = 'none';
@@ -96,27 +140,35 @@ function gameOver() {
 
 function startGameRightAway() {
     if (getParametersValueFromUrl('startGameRightAway') === 'true') {
-        startGame();
+        createRoom();
     }
 }
 
 function generateRandomName() {
     const randomName = 'Player' + Math.floor(Math.random() * 1000);
     return randomName;
-
 }
+
+function generateRandomRoomId() {
+    const randomRoomId = 'Room' + Math.floor(Math.random() * 1000);
+    return randomRoomId;
+}
+
 
 function startup() {
     document.getElementById('entityEffects').style.display = 'none';
     restorePlayerName();
+    restoreRoomId();
     document.getElementById('gameCanvas').style.display = 'none';
     document.getElementById('instruction').style.display = 'none';
     document.getElementById('scoreBoardGroup').style.display = 'none';
     document.getElementById('tryAgainButton').style.display = 'none';
+    document.getElementById('startGameButton').style.display = 'none';
     document.getElementById('returnToMenuButton').style.display = 'none';
-    document.getElementById('startButton').addEventListener('click', startGame);
+    document.getElementById('createRoomButton').addEventListener('click', createRoom);
     document.getElementById('tryAgainButton').addEventListener('click', tryAgain);
     document.getElementById('returnToMenuButton').addEventListener('click', returnToMenu);
+    document.getElementById('timeLeftLabel').style.display = 'none';
 
     startGameRightAway();
     restoreScore();

@@ -28,9 +28,16 @@ const ENTITY_PROPERTIES = [
     'nodes',
 ]
 
+const CLOSE_VIOLATION = {
+    INVALID_ROOMID_GIVEN: 4000,
+    ENTITY_TIMEDOUT : 4001,
+    INVALID_PLAYER_NAME_GIVEN: 40001
+}
+
 function establishConnection() {
-    const url = new URL(CHANNEL, `${localhost}`).toString()
-    connection = new WebSocket(url)
+    const roomId = getRoomId();
+    const playerName = getPlayerName();
+    connection = new WebSocket(`${ADDR}${CHANNEL}?roomId=${roomId}&playerName=${playerName}`)
 
     connection.onerror = error => {
         console.log(`WebSocket error:`, error)
@@ -44,8 +51,8 @@ function establishConnection() {
         console.log('Server says:', e.data)
     }
 
-    connection.onclose = () => {
-        console.log('Connection closed');
+    connection.onclose = e => {
+        console.log('Connection closed reason:', e.reason, " code:", e.code);
     }
 }
 
@@ -276,6 +283,11 @@ function getPlayerName() {
     return document.getElementById('playerNameInput').value;
 }
 
+function getRoomId() {
+    return document.getElementById('roomIdInput').value;
+}
+
+
 function cleanupStaleAnimations() {
     gameAnimation = [...gameAnimation].filter((animation) => {
         return [...gameEntities].find((entity) => entity.id === animation.id);
@@ -322,8 +334,6 @@ function addNodeToEntity(entity) {
     if(newEntity.tail.current < newEntity.tail.max) {
         newEntity.nodes = [...newEntity.nodes, lastNode];
         newEntity.tail.current += 1;
-
-        //console.log('New node:', newEntity.nodes);
     }
     return newEntity;
 }
@@ -411,21 +421,21 @@ function removeDeadEntities() {
     gameEntities = [...gameEntities].filter(gameEntity => gameEntity.status === STATUS.ALIVE)
 }
 
-function sendPlayerNameToServer (entity) {
-    const player = {id: entity.id, name: getPlayerName()};
-    sendToServer({player});
-}
-
 function updateGame() {
+    updateScore();
+    updateScoreBoard();
+
     if (!startGameUpdate) return;
     playerControl();
-    updateScore();
     renderEntities();
     displayGameOver();
-    updateScoreBoard();
     displayVulnerableEffect();
     removeDeadEntities();
     movePlayerEntities();
+}
+
+function startGameLoop () {
+    startGameUpdate = true;
 }
 
 
@@ -451,12 +461,10 @@ connection.onmessage = ({data}) => {
         if (p) {
             player = p;
             gameEntities = entities;
-            sendPlayerNameToServer(player);
         } else if (entities) {
             const updatedEntities = updateEntities(entities);
             player = getPlayer(updatedEntities);
             gameEntities = updatedEntities;
-            startGameUpdate = true;
         }
     } catch (err) {
         console.error(err);
