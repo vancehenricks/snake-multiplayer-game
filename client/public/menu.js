@@ -1,5 +1,5 @@
 
-function showStartButton() {
+function showStartGameButton() {
     document.getElementById('startGameButton').style.display = 'block';
     document.getElementById('startGameButton').addEventListener('click', startGame);
 }
@@ -158,7 +158,6 @@ function generateRandomRoomId() {
     return randomRoomId;
 }
 
-
 function startup() {
     document.getElementById('entityEffects').style.display = 'none';
     restorePlayerName();
@@ -170,6 +169,7 @@ function startup() {
     document.getElementById('tryAgainButton').style.display = 'none';
     document.getElementById('startGameButton').style.display = 'none';
     document.getElementById('returnToMenuButton').style.display = 'none';
+    document.getElementById('createRoomButton').style.display = 'block';
     document.getElementById('createRoomButton').addEventListener('click', createRoom);
     document.getElementById('tryAgainButton').addEventListener('click', tryAgain);
     document.getElementById('returnToMenuButton').addEventListener('click', returnToMenu);

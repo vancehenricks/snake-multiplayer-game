@@ -54,6 +54,11 @@ function establishConnection() {
 
     connection.onclose = e => {
         console.log('Connection closed reason:', e.reason, " code:", e.code);
+
+        if(e.code === CLOSE_VIOLATION.GAME_ALREADY_STARTED) {
+            alert('Game already started');
+            window.location.reload();
+        }
     }
 }
 
@@ -65,7 +70,6 @@ function sendToServer(message) {
     let msg = message;
     if (typeof msg === 'object') msg = JSON.stringify(msg);
     connection.send(msg);
-    //console.info('Sending message to server');
 }
 
 function sendPlayerDirectionToServer(entity) {
@@ -128,6 +132,12 @@ function renderSnakeHead({entity, isFill=false}) {
     ctx.fill();
 }
 
+function renderPlayerName(entity) {
+    const {x, y} = entity.nodes[0];
+    ctx.font = '15px Arial';
+    ctx.fillText(entity.name, x, y);
+}
+
 function renderSnake(entity) {
     ctx.beginPath();
     entity.nodes.forEach(node => {
@@ -175,6 +185,7 @@ function renderEntities() {
 
         renderSnake(entity);
         renderSnakeHead({entity, isFill: true});
+        renderPlayerName(entity);
         renderInvulnerableEffect(entity);
     });
 
@@ -250,19 +261,24 @@ function isInvulnerableTimedOut(entity) {
     return false;
 }
 
-function ConvertToSeconds(ms) {
-    return Math.floor(ms * .001);
-}
+function convertToCountdown({ timeout, maxMs }) {
+    const remainingMs = maxMs - (Date.now() - timeout);
+    const remainingSeconds = Math.floor(remainingMs / 1000);
+    const remainingMinutes = Math.floor(remainingSeconds / 60);
 
-function ConvertToCountdown({timeout, maxMs}) {
-    return ConvertToSeconds(maxMs - (Date.now() - timeout));
+    if (remainingMinutes > 0) {
+        const seconds = remainingSeconds % 60;
+        return `${remainingMinutes}m ${seconds}s`;
+    } else {
+        return `${remainingSeconds}s`;
+    }
 }
 
 function displayVulnerableEffect() {
-    const invulnerableTimeleftSeconds = ConvertToCountdown(player.invulnerable);
+    const invulnerableTimeleft = convertToCountdown(player.invulnerable);
 
     if(!isInvulnerableTimedOut(player)) {
-        document.getElementById('invulnerable').innerText = 'invulnerable: ' + invulnerableTimeleftSeconds + 's';
+        document.getElementById('invulnerable').innerText = 'invulnerable: ' + invulnerableTimeleft;
     } else {
         document.getElementById('invulnerable').innerText = '';
     }
@@ -436,6 +452,21 @@ function removeDeadEntities() {
     gameEntities = [...gameEntities].filter(gameEntity => gameEntity.status === STATUS.ALIVE)
 }
 
+function updateGameTimeLeft() {
+    document.getElementById('timeLeftValue').innerText = convertToCountdown({ timeout: gameTimeLeft, maxMs: maxGameTime});
+}
+
+function startGameTimeLeft() {
+    const intervalId = setInterval(() => {
+        gameTimeLeft - 1000;
+        if (gameTimeLeft <= 0) {
+            gameTimeLeft = 0;
+            clearInterval(intervalId);
+        }
+        updateGameTimeLeft();
+    }, 1000);
+}
+
 function updateGame() {
     if (!startGameUpdate) {
         updatePlayerList();
@@ -455,6 +486,7 @@ function updateGame() {
 function startGameLoop () {
     sendStartGameToServer();
     startGameUpdate = true;
+    startGameTimeLeft();
 }
 
 establishConnection();
@@ -467,17 +499,33 @@ let gameAnimation = [];
 let scoreBoard = [];
 let keys = {};
 let startGameUpdate = false;
+let gameTimeLeft = null;
+let maxGameTime = null;
 
 connection.onmessage = ({data}) => {
     try {
-        const {playerId, entities, scoreBoard: sb, isCreator} = JSON.parse(data);
+        const {playerId, 
+            entities, 
+            scoreBoard: sb, 
+            isCreator, 
+            gameState
+        } = JSON.parse(data);
 
         if (sb) {
             scoreBoard = sb;
         }
 
         if (isCreator) {
-            showStartButton();
+            showStartGameButton();
+        }
+
+        if(gameState) {
+            gameTimeLeft = gameState.gameTimeLeft;
+            maxGameTime = gameState.maxGameTime;
+
+            if(gameState.gameStart) {
+                startGame();
+            }
         }
 
         if (playerId) {
