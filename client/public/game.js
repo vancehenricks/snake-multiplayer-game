@@ -31,7 +31,8 @@ const ENTITY_PROPERTIES = [
 const CLOSE_VIOLATION = {
     INVALID_ROOMID_GIVEN: 4000,
     ENTITY_TIMEDOUT : 4001,
-    INVALID_PLAYER_NAME_GIVEN: 40001
+    INVALID_PLAYER_NAME_GIVEN: 4002,
+    GAME_ALREADY_STARTED: 4003
 }
 
 function establishConnection() {
@@ -69,6 +70,10 @@ function sendToServer(message) {
 
 function sendPlayerDirectionToServer(entity) {
     sendToServer({ player: { id: entity.id, direction: entity.direction}})
+}
+
+function sendStartGameToServer() {
+    sendToServer({startGame: true});
 }
 
 function createCanvas() {
@@ -175,8 +180,8 @@ function renderEntities() {
 
     renderPlayer();}
 
-function getPlayer(entities) {
-    return entities.find((entity) => entity.id === player.id) || player;
+function getPlayer(entities, playerId = player.id) {
+    return entities.find((entity) => entity.id === playerId) || player;
 }
 
 function createNode ({x, y}) {
@@ -277,6 +282,16 @@ function updateScoreBoard() {
         addCellToTable(column, scoreEntry.name + ': ' + scoreEntry.score);
     });
     scoreBoardTable.appendChild(column);
+}
+
+function updatePlayerList() {
+    const playerList = document.getElementById('playerList');
+    playerList.innerHTML = '';
+    const column = document.createElement('ol');
+    [...gameEntities].filter((entity) => entity.type === TYPE.PLAYER).forEach((entity) => {
+        addCellToTable(column, entity.name );
+    });
+    playerList.appendChild(column);
 }
 
 function getPlayerName() {
@@ -422,22 +437,25 @@ function removeDeadEntities() {
 }
 
 function updateGame() {
+    if (!startGameUpdate) {
+        updatePlayerList();
+        removeDeadEntities();
+        return;
+    };
+    
     updateScore();
     updateScoreBoard();
-
-    if (!startGameUpdate) return;
     playerControl();
     renderEntities();
     displayGameOver();
     displayVulnerableEffect();
-    removeDeadEntities();
     movePlayerEntities();
 }
 
 function startGameLoop () {
+    sendStartGameToServer();
     startGameUpdate = true;
 }
-
 
 establishConnection();
 createCanvas();
@@ -452,14 +470,18 @@ let startGameUpdate = false;
 
 connection.onmessage = ({data}) => {
     try {
-        const {player: p, entities, scoreBoard: sb} = JSON.parse(data);
+        const {playerId, entities, scoreBoard: sb, isCreator} = JSON.parse(data);
 
         if (sb) {
             scoreBoard = sb;
         }
 
-        if (p) {
-            player = p;
+        if (isCreator) {
+            showStartButton();
+        }
+
+        if (playerId) {
+            player = getPlayer(entities, playerId);
             gameEntities = entities;
         } else if (entities) {
             const updatedEntities = updateEntities(entities);

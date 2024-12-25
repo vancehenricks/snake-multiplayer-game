@@ -1,4 +1,9 @@
 
+function showStartButton() {
+    document.getElementById('startGameButton').style.display = 'block';
+    document.getElementById('startGameButton').addEventListener('click', startGame);
+}
+
 function createRoom() {
     if(document.getElementById('playerNameInput').value === '') {
         alert('Please enter a name');
@@ -19,24 +24,23 @@ function createRoom() {
     window.history.pushState('Waiting Room', '', url);
 
     document.head.appendChild(gameScript);
+    document.getElementById('playerListGroup').style.display = 'block';
     document.getElementById('createRoomButton').style.display = 'none';
-    document.getElementById('startGameButton').style.display = 'block';
     document.getElementById('instruction').style.display = 'block';
     document.getElementById('gameCanvas').style.display = 'block';
     document.getElementById('playerNameInput').disabled = true;
     document.getElementById('roomIdInput').disabled = true;
     document.getElementById('scoreLabel').style.display = 'none';
-    document.getElementById('startGameButton').addEventListener('click', startGame);
 }
 
 function startGame() {
+    document.getElementById('playerListGroup').style.display = 'none';
     document.getElementById('scoreBoardGroup').style.display = 'block';
     document.getElementById('scoreLabel').style.display = 'block';
     document.getElementById('startGameButton').style.display = 'none';
     document.getElementById('entityEffects').style.display = 'block';
     document.getElementById('timeLeftLabel').style.display = 'block';
-    startGameLoop();
-    
+    startGameLoop(); 
 }
 
 function addParametersToUrl({param, value, url}) {
@@ -162,6 +166,7 @@ function startup() {
     document.getElementById('gameCanvas').style.display = 'none';
     document.getElementById('instruction').style.display = 'none';
     document.getElementById('scoreBoardGroup').style.display = 'none';
+    document.getElementById('playerListGroup').style.display = 'none';
     document.getElementById('tryAgainButton').style.display = 'none';
     document.getElementById('startGameButton').style.display = 'none';
     document.getElementById('returnToMenuButton').style.display = 'none';

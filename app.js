@@ -74,17 +74,21 @@ function isTouchedEmpty(entity) {
     return Object.keys(entity?.touched).length > 0;
 }
 
+function getPlayerEntities(room) {
+    return [...room.gameEntities].map(entity => entity.type === TYPE.PLAYER);
+}
+
 function renderEntitiesToClients(room) {
 
     const touchedEntities = [...room.gameEntities].filter(gameEntity =>
         isTouchedEmpty(gameEntity)
     )
     const unusedPropertiesRemoved = touchedEntities.map(entity => generateEntityProperties(entity));
-    
-    if(unusedPropertiesRemoved.length > 0) {
-        aWss.clients.forEach((client) => {
 
-            client.send(JSON.stringify({entities: unusedPropertiesRemoved }));
+    if(unusedPropertiesRemoved.length > 0) {
+        getPlayerEntities(room).forEach((entity) => {
+            const client = getClient(entity);
+            client?.send(JSON.stringify({entities: unusedPropertiesRemoved }));
         })
     }
 }
@@ -100,7 +104,7 @@ function untouchedGameEntities(room) {
 
 function renderEverythingToClient(room, client, player) {
 
-    client.send(JSON.stringify({player: player, entities: room.gameEntities }));
+    client.send(JSON.stringify({playerId: player.id, entities: room.gameEntities, isCreator: room.creatorId === player.id}));
 }
 
 function updateEntityFromMap(room, entity) {
@@ -159,6 +163,8 @@ function isValidId ({id}, {id: refId}) {
 }
 
 function sanitizeEntity(entity, refEntity) {
+
+    if (!entity || !refEntity) return null;
 
     if(!isValidId(entity, refEntity)) return null;
 
@@ -286,14 +292,12 @@ function createRoom(roomId, entity) {
         roomId,
         gameEntities: [],
         scoreBoard: [],
-        scoreTouched: true,
         tickTimeOutId: null,
         scoreBoardTimeOutId: null,
         maxGameTime: GAME_TIME_MS,
         gameTimeLeft: null,
-        creator: entity.id,
-        gameStarted: true,
-
+        creatorId: entity.id,
+        gameStarted: false,
     };
 }
 
@@ -308,6 +312,19 @@ function getRoom(roomId) {
 function addEntityToRoom(room, entity) {
     if (room) {
         room.gameEntities = [...room.gameEntities, entity];
+    }
+}
+
+function removeEntityFromRoom(room, entity) {
+    if (room) {
+        room.gameEntities = [...room.gameEntities].map(gameEntity =>  
+        {
+            if(gameEntity.id === entity.id) {
+                return killEntity(gameEntity);
+            }
+            return gameEntity;
+        }
+        );
     }
 }
 
@@ -367,8 +384,6 @@ function addNodeToEntity(entity) {
     if(newEntity.tail.current < newEntity.tail.max) {
         newEntity.nodes = [...newEntity.nodes, lastNode];
         newEntity.tail.current += 1;
-
-        //console.log('New node:', newEntity.nodes);
     }
     return newEntity;
 }
@@ -435,7 +450,6 @@ function isEntitySelf(entity1, entity2) {
 }
 
 function addScoreToEntity(entity, score) {
-    scoreTouched = true;
     return {...entity, tail: {...entity.tail, max: entity.tail.max + score},
     score: entity.score + score, touched: {id: true, tail: true, score: true}};
 }
@@ -481,8 +495,6 @@ function intersectSelf({entity, gameEntity, hits}) {
         entity.type !== TYPE.PLAYER ||
         gameEntity.type !== TYPE.PLAYER) return entity;
 
-    //console.log('Intersecting self:', hits);
-
     if(hasHitTailNode2(hits)) {
         return killEntity(entity);
     }
@@ -491,7 +503,6 @@ function intersectSelf({entity, gameEntity, hits}) {
 }
 
 function isIdleTimedOut(entity) {
-    //console.log('timeout', Date.now() - entity.timeout, TIMEOUT_MS, entity.timeout);
     if (Date.now() - entity.timeout > IDLE_TIMEOUT_MS) {
         return true;
     }
@@ -525,17 +536,14 @@ function markDeadWhenTimedOut(room) {
 
 function removeDeadEntities(room) {
     room.gameEntities = [...room.gameEntities].filter((entity) => {
-        if(entity.status === STATUS.DEAD) {
-            if(entity.type === TYPE.PLAYER) {
-                const client = getClient(entity);
+        if(entity.status === STATUS.DEAD && entity.type === TYPE.PLAYER) {
+            const client = getClient(entity);
+            if(client) {
                 deleteClient(entity);
                 console.log('Closing client IP:', client._socket.remoteAddress);
                 client.close(4001, 'Entity timedout');
             }
-
-            return false;
         }
-        return true;
     });
 }
 
@@ -612,12 +620,12 @@ function calculateScoresOfPlayers(room) {
 }
 
 function renderScoreBoardToClients(room) {
-    aWss.clients.forEach((client) => {
-        if(room.scoreTouched) {
+    getPlayerEntities(room).forEach((entity) => {
+        const client = getClient(entity);
+        if(entity.touched.score) {
             client.send(JSON.stringify({scoreBoard: room.scoreBoard}));
         }
     })
-    room.scoreTouched = false;
 }
 
 function getCenterPosition() {
@@ -734,6 +742,10 @@ app.ws(CHANNEL, (ws, req) => {
         console.log('Found none, Creating ', req.query.roomId, ' room setting IP:', req.ip, ' as creator');
         createRoom(roomId, refPlayer);
         room = getRoom(roomId);
+    } else if (room.gameStarted) {
+        console.log('Game already started in room:', roomId);
+        ws.close(4003, 'Game already started');
+        return;
     }
 
     createClient(refPlayer, ws);
@@ -763,13 +775,19 @@ app.ws(CHANNEL, (ws, req) => {
 
     ws.on('close', () => {
         console.log('Client disconnected from room:', roomId, 'IP:', req.ip);
+
         if (!room) return;
-        
-        if (countPlayerEntities(room) <= 0) {
+        const playerCount = countPlayerEntities(room);
+        if (playerCount <= 0) {
             stopGameLoop(room);
             deleteRoom(room);
             [...room.gameEntities].forEach((entity) => deleteClient(entity));
             console.log(`Room ${roomId} has been removed due to no players.`);
+        } else {
+            removeEntityFromRoom(room, refPlayer);
+            renderEverythingToClient(room, ws, refPlayer);
+            renderEntitiesToClients(room);
+            removeDeadEntities(room);
         }
     });
 });
