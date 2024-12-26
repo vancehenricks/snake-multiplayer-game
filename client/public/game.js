@@ -87,7 +87,6 @@ function createCanvas() {
 }
 
 function updateScore() {
-    //console.log(player);
     document.getElementById('score').innerText = player.score;  
 }
 
@@ -200,8 +199,16 @@ function renderEntities() {
 
     renderPlayer();}
 
+function convert1DArrayToNodes (array) {
+    let nodes = [];
+    for (let i = 0; i < array.length; i += 2) {
+        nodes.push({x: array[i], y: array[i+1]});
+    }
+    return nodes;
+}
+
 function getPlayer(entities, playerId = player.id) {
-    return entities.find((entity) => entity.id === playerId) || player;
+    return [...entities].find((entity) => entity.id === playerId) || player;
 }
 
 function createNode ({x, y}) {
@@ -257,7 +264,6 @@ function displayGameOver() {
     if (player.status === STATUS.DEAD) {
         clearTimeout(ticketTimeOutId);
         clearTimeout(animationTimeOutId);
-        //console.log('Game over');
         gameOver();
     }
 }
@@ -283,7 +289,7 @@ function convertToCountdown({ timeout, maxMs }) {
     }
 }
 
-function displayVulnerableEffect() {
+function updateVulnerableEffect() {
     const invulnerableTimeleft = convertToCountdown(player.invulnerable);
 
     if(!isInvulnerableTimedOut(player)) {
@@ -461,8 +467,8 @@ function removeDeadEntities() {
     gameEntities = [...gameEntities].filter(gameEntity => gameEntity.status === STATUS.ALIVE)
 }
 
-function updateGameTimeLeft() {
-    document.getElementById('timeLeftValue').innerText = convertToCountdown({ timeout: gameTimeLeft, maxMs: maxGameTime});
+function updateGameTime() {
+    document.getElementById('timeLeftValue').innerText = convertToCountdown(gameTime);
 }
 
 /*function startGameTimeLeft() {
@@ -488,14 +494,30 @@ function updateGame() {
     playerControl();
     renderEntities();
     displayGameOver();
-    displayVulnerableEffect();
     movePlayerEntities();
+    updateVulnerableEffect();
+    updateGameTime();
 }
 
 function startGameLoop () {
     sendStartGameToServer();
     startGameUpdate = true;
     //startGameTimeLeft();
+}
+
+function convertEntities1DArrayToNodes(entities) {
+    
+    return [...entities].map(entity => {
+
+        if (entity.nodes) {
+            return {
+                ...entity,
+                nodes: convert1DArrayToNodes(entity.nodes),
+            }
+        }
+
+        return entity;
+    });
 }
 
 establishConnection();
@@ -508,8 +530,7 @@ let gameAnimation = [];
 let scoreBoard = [];
 let keys = {};
 let startGameUpdate = false;
-let gameTimeLeft = null;
-let maxGameTime = null;
+let gameTime = null;
 
 connection.onmessage = ({data}) => {
     try {
@@ -517,8 +538,7 @@ connection.onmessage = ({data}) => {
             entities, 
             scoreBoard: sb, 
             isCreator, 
-            gameTimeLeft: gt,
-            maxGameTime: mt,
+            gameTime: gt,
             gameStart,
         } = JSON.parse(data);
 
@@ -531,26 +551,28 @@ connection.onmessage = ({data}) => {
         }
 
         if(gt) {
-            gameTimeLeft = gt;
-            updateGameTimeLeft();
-        }
-
-        if(mt) {
-            maxGameTime = mt;
+            gameTime = gt;
         }
 
         if(gameStart) {
             startGame();
         }
+        
+        
+        if (entities) {
+            const convertedEntities = convertEntities1DArrayToNodes(entities);
 
-        if (playerId) {
-            player = getPlayer(entities, playerId);
-            gameEntities = entities;
-        } else if (entities) {
-            const updatedEntities = updateEntities(entities);
-            player = getPlayer(updatedEntities);
-            gameEntities = updatedEntities;
+            if (playerId) {
+                player = getPlayer(convertedEntities, playerId);
+                gameEntities = convertedEntities;
+            } else {
+                const updatedEntities = updateEntities(convertedEntities);
+                player = getPlayer(updatedEntities);
+                gameEntities = updatedEntities;
+            }
+
         }
+        
     } catch (err) {
         console.error(err);
     };
