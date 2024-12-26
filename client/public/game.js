@@ -164,7 +164,6 @@ function renderPlayer() {
     renderSnake(player);;
     renderSnakeHead({entity: player});
     renderInvulnerableEffect(player);
-    renderName(player);
 }
 
 function clearCanvas() {
