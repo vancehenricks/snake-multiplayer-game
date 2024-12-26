@@ -89,7 +89,10 @@ function renderTouchedEntitiesToClient(room) {
     if(unusedPropertiesRemoved.length > 0) {
         getPlayerEntities(room).forEach((entity) => {
             const client = getClient(entity);
-            client.send(JSON.stringify({entities: unusedPropertiesRemoved }));
+  
+            client.send(JSON.stringify({
+                entities: unusedPropertiesRemoved, 
+                gameTimeLeft: room.gameTimeLeft }));
         })
     }
 }
@@ -524,7 +527,6 @@ function isGameTimedOut(room) {
 function markDeadWhenTimedOut(room) {
     room.gameEntities = [...room.gameEntities].map((entity) => {
         if(isIdleTimedOut(entity) || isGameTimedOut(room)) {
-            //console.log('Removing entity:', entity);
             return killEntity(entity);
         }
         return entity;
@@ -533,14 +535,18 @@ function markDeadWhenTimedOut(room) {
 
 function removeDeadEntities(room) {
     room.gameEntities = [...room.gameEntities].filter((entity) => {
-        if(entity.status === STATUS.DEAD && entity.type === TYPE.PLAYER) {
-            const client = getClient(entity);
-            if(client) {
-                deleteClient(entity);
-                console.log('Closing client IP:', client._socket.remoteAddress);
-                client.close(4001, 'Entity timedout');
+        if(entity.status === STATUS.DEAD) {
+            if (entity.type === TYPE.PLAYER) {
+                const client = getClient(entity);
+                if(client) {
+                    deleteClient(entity);
+                    console.log('Closing client IP:', client._socket.remoteAddress);
+                    client.close(4001, 'Entity timedout');
+                }
             }
+            return false;
         }
+        return true;
     });
 }
 
@@ -632,12 +638,20 @@ function touchNodes(entity) {
 }
 
 function updateGame(room) {
+    updateGameTime(room);
     spawnFoodEntities(room);
     checkForIntersect(room);
     movePlayerEntities(room);
     renderTouchedEntitiesToClient(room);
     untouchedGameEntities(room);
     removeDeadEntities(room);
+
+
+    console.log({
+        gameEntities: room.gameEntities,
+        touched: room.gameEntities.filter(entity => isTouchedEmpty(entity))
+    })
+
     markDeadWhenTimedOut(room);
 }
 
@@ -648,7 +662,8 @@ function updateScoreBoard(room) {
 
 function updateEntityFromRoom(room, entity) {
     if (room) {
-        room.gameEntities = room.gameEntities.map(gameEntity => {
+        room.gameEntities = 
+        [...room.gameEntities].map(gameEntity => {
             if (gameEntity.id === entity.id) {
                 return { ...gameEntity, ...entity };
             }
@@ -658,15 +673,18 @@ function updateEntityFromRoom(room, entity) {
 }
 
 function countPlayerEntities(room) {
-    return room.gameEntities.filter(entity => entity.type === TYPE.PLAYER).length;
+    return [...room.gameEntities].filter(entity => entity.type === TYPE.PLAYER).length;
+}
+
+function updateGameTime(room) {
+    room.gameTimeLeft = Date.now();
 }
 
 function startGameLoop(room) {
     if (!room) return;
 
     room.gameStarted = true;
-    room.gameTimeLeft = Date.now();
-
+    updateGameTime(room);
     renderGameStatesToClient(room);
 
     const hasActivePlayers = countPlayerEntities(room) > 0;
@@ -680,6 +698,7 @@ function startGameLoop(room) {
         }
 
         updateGame(room);
+
         room.tickTimeOutId = setTimeout(gameTick, GAME_TICK_MS);
     }
 
@@ -715,16 +734,11 @@ function renderGameStatesToClient(room) {
     getPlayerEntities(room).forEach((entity) => {
         const client = getClient(entity);
 
-        console.log({
-            client: Boolean(client)
-        });
-
         client.send(JSON.stringify({
-            gameState: {
                 gameStarted: true, 
                 gameTimeLeft: room.gameTimeLeft, 
                 maxGameTime: room.maxGameTime
-            }}));
+        }));
     });
 };
 
@@ -753,10 +767,6 @@ app.ws(CHANNEL, (ws, req) => {
         position: getCenterPosition(),
     });
 
-    console.log({
-        room
-    })
-
     if (!room) {
         console.log('Found none, Creating ', req.query.roomId, ' room setting IP:', req.ip, ' as creator');
         createRoom(roomId, refPlayer);
@@ -777,16 +787,22 @@ app.ws(CHANNEL, (ws, req) => {
         try {
             const {player, startGame} = JSON.parse(data);
 
-            if (startGame && refPlayer.id === room.creatorId && !room.gameStarted) {
-                startGameLoop(room);
-            }
-
             let playerUpdated = sanitizeEntity(player, refPlayer);
 
-            if (!playerUpdated) return;
+            if (playerUpdated) {
 
-            playerUpdated = updateEntityTimeOut(playerUpdated);
-            updateEntityFromRoom(room, playerUpdated);
+                playerUpdated = updateEntityTimeOut(playerUpdated);
+                updateEntityFromRoom(room, playerUpdated);
+            }
+
+            console.log({
+                gameEntities: room.gameEntities,
+            })
+
+            if (startGame && refPlayer.id === room.creatorId && !room.gameStarted) {
+     
+                startGameLoop(room);
+            }
                 
         } catch (err) {
             console.error(err);

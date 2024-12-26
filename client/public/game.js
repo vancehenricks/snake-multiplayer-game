@@ -132,10 +132,20 @@ function renderSnakeHead({entity, isFill=false}) {
     ctx.fill();
 }
 
-function renderPlayerName(entity) {
-    const {x, y} = entity.nodes[0];
-    ctx.font = '15px Arial';
-    ctx.fillText(entity.name, x, y);
+function renderName(entity) {
+    const { x, y } = entity.nodes[0];
+
+    const { y: dy } = entity.direction;
+
+    ctx.fillStyle = entity.color;
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'center';
+
+    if (dy === -1) {
+        ctx.fillText(entity.name, x, y + 15);   
+    } else {
+        ctx.fillText(entity.name, x, y - 10);
+    }
 }
 
 function renderSnake(entity) {
@@ -151,10 +161,10 @@ function renderSnake(entity) {
 
 
 function renderPlayer() {
-    renderSnake(player);
-    
+    renderSnake(player);;
     renderSnakeHead({entity: player});
     renderInvulnerableEffect(player);
+    renderName(player);
 }
 
 function clearCanvas() {
@@ -185,7 +195,7 @@ function renderEntities() {
 
         renderSnake(entity);
         renderSnakeHead({entity, isFill: true});
-        renderPlayerName(entity);
+        renderName(entity);
         renderInvulnerableEffect(entity);
     });
 
@@ -456,7 +466,7 @@ function updateGameTimeLeft() {
     document.getElementById('timeLeftValue').innerText = convertToCountdown({ timeout: gameTimeLeft, maxMs: maxGameTime});
 }
 
-function startGameTimeLeft() {
+/*function startGameTimeLeft() {
     const intervalId = setInterval(() => {
         gameTimeLeft - 1000;
         if (gameTimeLeft <= 0) {
@@ -465,7 +475,7 @@ function startGameTimeLeft() {
         }
         updateGameTimeLeft();
     }, 1000);
-}
+}*/
 
 function updateGame() {
     if (!startGameUpdate) {
@@ -486,7 +496,7 @@ function updateGame() {
 function startGameLoop () {
     sendStartGameToServer();
     startGameUpdate = true;
-    startGameTimeLeft();
+    //startGameTimeLeft();
 }
 
 establishConnection();
@@ -508,7 +518,9 @@ connection.onmessage = ({data}) => {
             entities, 
             scoreBoard: sb, 
             isCreator, 
-            gameState
+            gameTimeLeft: gt,
+            maxGameTime: mt,
+            gameStart,
         } = JSON.parse(data);
 
         if (sb) {
@@ -519,13 +531,17 @@ connection.onmessage = ({data}) => {
             showStartGameButton();
         }
 
-        if(gameState) {
-            gameTimeLeft = gameState.gameTimeLeft;
-            maxGameTime = gameState.maxGameTime;
+        if(gt) {
+            gameTimeLeft = gt;
+            updateGameTimeLeft();
+        }
 
-            if(gameState.gameStart) {
-                startGame();
-            }
+        if(mt) {
+            maxGameTime = mt;
+        }
+
+        if(gameStart) {
+            startGame();
         }
 
         if (playerId) {
