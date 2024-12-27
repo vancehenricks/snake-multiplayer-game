@@ -719,6 +719,8 @@ function startGameLoop(room) {
 }
 
 function stopGameLoop(room) {
+    room.gameStarted = false;
+
     if (room) {
         if (room.tickTimeOutId) {
             clearTimeout(room.tickTimeOutId);
