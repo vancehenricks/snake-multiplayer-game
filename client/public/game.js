@@ -26,6 +26,7 @@ const ENTITY_PROPERTIES = [
     'timeout',
     'status',
     'nodes',
+    'animation', //in client only
 ]
 
 const CLOSE_VIOLATION = {
@@ -54,11 +55,6 @@ function establishConnection() {
 
     connection.onclose = e => {
         console.log('Connection closed reason:', e.reason, " code:", e.code);
-
-        if(e.code === CLOSE_VIOLATION.GAME_ALREADY_STARTED) {
-            alert('Game already started');
-            window.location.reload();
-        }
     }
 }
 
@@ -118,8 +114,9 @@ function renderFood({id, size, nodes}) {
 
 function renderSnakeHead({entity, isFill=false}) {
     const node = entity.nodes[0];
+    const payload = getAnimationFramePayload(entity.id);
 
-    const size = entity.size * 2;
+    const size = payload?.size || entity.size * 2;
     const {x, y} = {x: node.x - 3, y: node.y - 5}
 
     ctx.beginPath();
@@ -129,7 +126,28 @@ function renderSnakeHead({entity, isFill=false}) {
     ctx.fillStyle = isFill ? entity.color : '#f1f1f1';
     ctx.stroke();
     ctx.fill();
+
+    if(payload) {
+        if (entity.animation.eat) {
+            nextAnimationFrame(entity.id, { ...payload, eat: payload.eat+1});
+        }
+
+        if(payload.eat > 0) {
+            if(size < payload.expected && !payload.exit) {
+                nextAnimationFrame(entity.id, {...payload, size: size+3});
+            } else {
+                if (size > payload.initial) {
+                    nextAnimationFrame(entity.id, {...payload, size : size-3, exit: true});
+                } else {
+                    nextAnimationFrame(entity.id, {...payload, size: payload.initial, eat: payload.eat-1, exit: false});
+                }
+            }
+        }
+    } else if (entity.animation.eat) {
+        nextAnimationFrame(entity.id, {size: size, initial: size, expected: size+6, eat: 1, exit: false});
+    }
 }
+
 
 function renderName(entity) {
     const { x, y } = entity.nodes[0];
@@ -261,11 +279,8 @@ function playerControl() {
 }
 
 function displayGameOver() {
-    if (player.status === STATUS.DEAD) {
-        clearTimeout(ticketTimeOutId);
-        clearTimeout(animationTimeOutId);
-        gameOver();
-    }
+    stopGameLoop();
+    gameOver();
 }
 
 function isInvulnerableTimedOut(entity) {
@@ -441,6 +456,31 @@ function updateTail(entity, gameEntity) {
     return entity;
 }
 
+function addAnimationIndicatorsToEntity(entity) {
+
+    const gameEntity = gameEntities?.find((gEntity) => entity.id === gEntity.id);
+
+    if(!gameEntity) {
+        return {
+            ...entity,
+            animation: {
+                eat: false,
+            }
+        }
+    };
+    
+    return {
+        ...entity,
+        animation: {
+            eat: entity.score > gameEntity.score,
+        }
+    }
+}
+
+function addAnimationIndicatorsToEntities(entities) {
+    return [...entities].map(entity => addAnimationIndicatorsToEntity(entity));
+}
+
 function updateEntities(entities) {
     if (gameEntities.length === 0) return entities;
 
@@ -471,17 +511,6 @@ function updateGameTime() {
     document.getElementById('timeLeftValue').innerText = convertToCountdown(gameTime);
 }
 
-/*function startGameTimeLeft() {
-    const intervalId = setInterval(() => {
-        gameTimeLeft - 1000;
-        if (gameTimeLeft <= 0) {
-            gameTimeLeft = 0;
-            clearInterval(intervalId);
-        }
-        updateGameTimeLeft();
-    }, 1000);
-}*/
-
 function updateGame() {
     if (!startGameUpdate) {
         updatePlayerList();
@@ -493,16 +522,19 @@ function updateGame() {
     updateScoreBoard();
     playerControl();
     renderEntities();
-    displayGameOver();
     movePlayerEntities();
     updateVulnerableEffect();
     updateGameTime();
+    removeDeadEntities();
 }
 
 function startGameLoop () {
     sendStartGameToServer();
     startGameUpdate = true;
-    //startGameTimeLeft();
+}
+
+function stopGameLoop () {
+    startGameUpdate = false;
 }
 
 function convertEntities1DArrayToNodes(entities) {
@@ -532,6 +564,17 @@ let keys = {};
 let startGameUpdate = false;
 let gameTime = null;
 
+connection.onclose = ({code}) => {
+    if(code === CLOSE_VIOLATION.GAME_ALREADY_STARTED) {
+        alert('Game already started');
+        window.location.reload();
+    }
+
+    if (code === CLOSE_VIOLATION.ENTITY_TIMEDOUT) {
+        displayGameOver();
+    }
+}
+
 connection.onmessage = ({data}) => {
     try {
         const {playerId, 
@@ -560,15 +603,16 @@ connection.onmessage = ({data}) => {
         
         
         if (entities) {
-            const convertedEntities = convertEntities1DArrayToNodes(entities);
+            let convertedEntities = convertEntities1DArrayToNodes(entities);
+                convertedEntities = addAnimationIndicatorsToEntities(convertedEntities);
 
             if (playerId) {
                 player = getPlayer(convertedEntities, playerId);
                 gameEntities = convertedEntities;
             } else {
-                const updatedEntities = updateEntities(convertedEntities);
-                player = getPlayer(updatedEntities);
-                gameEntities = updatedEntities;
+                convertedEntities = updateEntities(convertedEntities);
+                player = getPlayer(convertedEntities);
+                gameEntities = convertedEntities;
             }
 
         }
@@ -586,12 +630,12 @@ document.addEventListener('keyup', function(event) {
     keys[event.key] = false;
 });
 
-let animationTimeOutId = setTimeout(function run() {
+setTimeout(function run() {
     cleanupStaleAnimations();
-    animationTimeOutId = setTimeout(run, ANIMATION_TICK_MS);
+    setTimeout(run, ANIMATION_TICK_MS);
 }, ANIMATION_TICK_MS);
 
-let ticketTimeOutId = setTimeout(function run() {
+setTimeout(function run() {
     updateGame();
-    ticketTimeOutId = setTimeout(run, CLIENT_TICK_MS);
+    setTimeout(run, CLIENT_TICK_MS);
 }, CLIENT_TICK_MS);

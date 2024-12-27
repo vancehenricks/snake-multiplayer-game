@@ -3,7 +3,7 @@ const DEFAULT_ENTITY_SIZE = 5;
 const MAX_TAIL = 50;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
-const DEFAUL_GAME_TIME_MS = 180000;
+const DEFAULT_GAME_TIME_MS = 60000;
 const DEFAULT_INVULNERABLE_TIMEOUT_MS = 5000;
 const MAX_FOOD = 10;
 const MAP = {
@@ -96,7 +96,7 @@ function renderTouchedEntitiesToClient(room) {
     );
 
     const unusedPropertiesRemoved = touchedEntities.map(entity => generateEntityProperties(entity));
-
+    
     if(unusedPropertiesRemoved.length > 0) {
         getPlayerEntities(room).forEach((entity) => {
             const client = getClient(entity);
@@ -313,7 +313,7 @@ function getClient(entity) {
 
 function createGameTime({
     timeout=Date.now(),
-    maxMs=DEFAUL_GAME_TIME_MS,
+    maxMs=DEFAULT_GAME_TIME_MS,
 }={}) {
     return {
         timeout,
