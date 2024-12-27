@@ -127,7 +127,14 @@ function renderEverythingToClients(room, player) {
 
     getPlayerEntities(room).forEach((entity) => {
         const client = getClient(entity);
-        client?.send(JSON.stringify({playerId: player.id, entities: room.gameEntities, isCreator: room.creatorId === player.id}));
+
+        let data = {};
+
+        if (entity.id === player.id) {
+            data = { playerId: player.id };
+        }
+
+        client?.send(JSON.stringify({...data, entities: room.gameEntities, isCreator: room.creatorId === player.id}));
     })
 }
 

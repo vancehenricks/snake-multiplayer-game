@@ -529,7 +529,9 @@ function updateGame() {
 }
 
 function startGameLoop () {
-    sendStartGameToServer();
+    if (isCreator) {
+        sendStartGameToServer();
+    }
     startGameUpdate = true;
 }
 
@@ -563,6 +565,7 @@ let scoreBoard = [];
 let keys = {};
 let startGameUpdate = false;
 let gameTime = null;
+let isCreator = false;
 
 connection.onclose = ({code}) => {
     if(code === CLOSE_VIOLATION.GAME_ALREADY_STARTED) {
@@ -580,16 +583,17 @@ connection.onmessage = ({data}) => {
         const {playerId, 
             entities, 
             scoreBoard: sb, 
-            isCreator, 
+            isCreator: ic, 
             gameTime: gt,
-            gameStart,
+            gameStarted,
         } = JSON.parse(data);
 
         if (sb) {
             scoreBoard = sb;
         }
 
-        if (isCreator) {
+        if (ic) {
+            isCreator = true;
             showStartGameButton();
         }
 
@@ -597,7 +601,7 @@ connection.onmessage = ({data}) => {
             gameTime = gt;
         }
 
-        if(gameStart) {
+        if(gameStarted) {
             startGame();
         }
         
@@ -605,7 +609,6 @@ connection.onmessage = ({data}) => {
         if (entities) {
             let convertedEntities = convertEntities1DArrayToNodes(entities);
                 convertedEntities = addAnimationIndicatorsToEntities(convertedEntities);
-
             if (playerId) {
                 player = getPlayer(convertedEntities, playerId);
                 gameEntities = convertedEntities;
