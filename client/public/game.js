@@ -1,6 +1,6 @@
 const DEFAULT_IDLE_SPEED = 5;
-const CLIENT_TICK_MS = 100;
-const ANIMATION_TICK_MS = 10;
+const CLIENT_TICK_MS = 33;
+const ANIMATION_TICK_MS = 33;
 const CHANNEL = '/game';
 const TYPE = {
     PLAYER: 'player',
@@ -33,7 +33,8 @@ const CLOSE_VIOLATION = {
     INVALID_ROOMID_GIVEN: 4000,
     ENTITY_TIMEDOUT : 4001,
     INVALID_PLAYER_NAME_GIVEN: 4002,
-    GAME_ALREADY_STARTED: 4003
+    GAME_ALREADY_STARTED: 4003,
+    GAME_TIMEDOUT: 4004
 }
 
 function establishConnection() {
@@ -94,7 +95,7 @@ function renderFood({id, size, nodes}) {
     ctx.beginPath();
     ctx.lineWidth = 5;
     ctx.strokeStyle = '#242424';
-    ctx.arc(x, y, size/3, 0, Math.PI * 2, false);
+    ctx.arc(x, y, size/2, 0, Math.PI * 2, false);
     ctx.fillStyle = '#f1f1f1';
     ctx.stroke();
     ctx.fill();
@@ -118,6 +119,32 @@ function renderSnakeHead({entity, isFill=false}) {
 
     const size = payload?.size || entity.size * 2;
     const {x, y} = {x: node.x - 3, y: node.y - 5}
+
+    ctx.beginPath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = entity.color;
+    ctx.lineCap = 'round';
+    ctx.lineTo(node.x, node.y);
+
+    if (entity.direction.y === -1 && entity.direction.x === 0) {
+        ctx.lineTo(node.x, node.y+10);
+    } else if (entity.direction.y === 1 && entity.direction.x === 0) {  
+        ctx.lineTo(node.x, node.y-10);
+    } else if (entity.direction.x === -1 && entity.direction.y === 0) {
+        ctx.lineTo(node.x+10, node.y);
+    } else if (entity.direction.x === 1 && entity.direction.y === 0) {
+        ctx.lineTo(node.x-10, node.y);
+    } else if (entity.direction.x === 1 && entity.direction.y === 1) {
+        ctx.lineTo(node.x-7, node.y-7);
+    } else if (entity.direction.x === -1 && entity.direction.y === 1) {
+        ctx.lineTo(node.x+7, node.y-7);
+    } else if (entity.direction.x === 1 && entity.direction.y === -1) {
+        ctx.lineTo(node.x-7, node.y+7);
+    } else if (entity.direction.x === -1 && entity.direction.y === -1) {
+        ctx.lineTo(node.x+7, node.y+7);
+    }
+    
+    ctx.stroke();
 
     ctx.beginPath();
     ctx.lineWidth = 5;
@@ -281,6 +308,11 @@ function playerControl() {
 function displayGameOver() {
     stopGameLoop();
     gameOver();
+}
+
+function displayWinner() {
+    displayGameOver();
+    winner(scoreBoard[0].name);
 }
 
 function isInvulnerableTimedOut(entity) {
@@ -572,9 +604,11 @@ connection.onclose = ({code}) => {
         alert('Game already started');
         window.location.reload();
     }
-
-    if (code === CLOSE_VIOLATION.ENTITY_TIMEDOUT) {
+    else if (code === CLOSE_VIOLATION.ENTITY_TIMEDOUT) {
         displayGameOver();
+    }
+    else if (code === CLOSE_VIOLATION.GAME_TIMEDOUT) {
+        displayWinner();
     }
 }
 

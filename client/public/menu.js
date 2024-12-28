@@ -132,6 +132,10 @@ function restoreRoomId() {
     }
 }
 
+function winner(text) {
+    document.getElementById('gameOver').innerText = 'WINNER!\n' + text;
+}
+
 function gameOver() {
     document.getElementById('playerNameInput').disabled = false;
     document.getElementById('timeLeftLabel').style.display = 'none';

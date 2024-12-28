@@ -1,10 +1,10 @@
-const GAME_TICK_MS = 100;
+const GAME_TICK_MS = 33;
 const DEFAULT_ENTITY_SIZE = 5;
 const MAX_TAIL = 50;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
-const DEFAULT_GAME_TIME_MS = 60000;
-const DEFAULT_INVULNERABLE_TIMEOUT_MS = 5000;
+const DEFAULT_GAME_TIME_MS = 10000;
+const DEFAULT_INVULNERABLE_TIMEOUT_MS = 30000;
 const MAX_FOOD = 10;
 const MAP = {
     WIDTH: 500,
@@ -578,13 +578,25 @@ function removeDeadEntities(room) {
                 if(client) {
                     deleteClient(entity);
                     console.log('Closing client IP:', client._socket.remoteAddress);
-                    client.close(4001, 'Entity timedout');
+                    
+                    if (isGameTimedOut(room)) {
+                        client.close(4004, 'Game timedout');
+                    } else {
+                        client.close(4001, 'Entity timedout');
+                    }
                 }
             }
             return false;
         }
         return true;
     });
+
+    if (countPlayerEntities(room) <= 1) {
+        getPlayerEntities(room).forEach((entity) => {
+            const client = getClient(entity);
+            client.close(4004, 'Game timedout');
+        });
+    }
 }
 
 function checkForIntersect(room) {
