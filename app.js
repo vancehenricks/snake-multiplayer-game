@@ -46,7 +46,7 @@ var server = process.env.NODE_ENV !== 'development' ? https.createServer(createO
 var expressWs = expressWs(app, server);
 
 console.log({
-    NODE_NEV: process.env.NODE_ENV,
+    NODE_ENV: process.env.NODE_ENV,
 })
 
 const path = require('path');
