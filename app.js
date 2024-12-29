@@ -42,7 +42,7 @@ function createOptions () {
 };
 
 var app = express();
-var server = process.env.ENV !== 'development' ? https.createServer(createOptions(), app): http.createServer(app)
+var server = process.env.NODE_ENV !== 'development' ? https.createServer(createOptions(), app): http.createServer(app)
 var expressWs = expressWs(app, server);
 
 const path = require('path');
