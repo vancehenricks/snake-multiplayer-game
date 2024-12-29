@@ -352,6 +352,17 @@ function removePlayerFromRoom(room, entity) {
     }
 }
 
+function generateUniqueColor(room) {
+    const colors = room.gameEntities.map(entity => entity.color);
+    let color = generateRandomColor();
+
+    for(let i = 0;colors.includes(color) && i < 10; i+=1) {
+        color = generateRandomColor();
+    }
+
+    return color;
+}
+
 function createEntity({
     type=TYPE.PLAYER,
     id=generateId(),
@@ -385,7 +396,27 @@ function obstacleEntitiesCount(room) {
 
 function generateRandomRange(min, max) {
     return Math.floor((Math.random() * (max - min + 1)) + min);
- }
+}
+
+function generatePositionFarFromPlayers(room) {
+    const playerEntities = getPlayerEntities(room);
+
+    let position = generateRandomPosition();
+
+    playerEntities.forEach((entity) => {
+        const {x, y} = entity.nodes[0];
+        const offset = 30;
+
+        if (position.x < x + offset &&
+            position.x > x - offset &&
+            position.y < y + offset &&
+            position.y > y - offset) {
+            position = generateRandomPosition();
+        }
+    });
+
+    return position;
+}
 
  function spawnFoodEntities(room) {
     if (!room || foodEntitiesCount(room) > MAX_FOOD) return;
@@ -396,7 +427,7 @@ function generateRandomRange(min, max) {
         name: 'Food',
         tail: createTail({current: 0, max: 0}),
         size: DEFAULT_ENTITY_SIZE + score / .9,
-        position: generateRandomPosition(),
+        position: generatePositionFarFromPlayers(room),
         direction: createNode({x: 0, y: 0}),
         score,
     });
@@ -413,7 +444,7 @@ function spawnObstacleEntities(room) {
         name: 'Obstacle',
         tail: createTail({current: 0, max: 0}),
         size: DEFAULT_ENTITY_SIZE + score / .9,
-        position: generateRandomPosition(),
+        position: generatePositionFarFromPlayers(room),
         direction: createNode({x: 0, y: 0}),
         score,
     });
@@ -438,6 +469,11 @@ function stopWhenOutOfBounds(entity) {
     const offset = entity.size*1.5;
 
     if(x < offset || x > MAP.WIDTH-offset || y < offset || y > MAP.HEIGHT-offset) {
+
+        if(entity.type === TYPE.PLAYER) {
+            console.log(`Player ${entity.name} killed by world border`);
+        }
+
         return killEntity(entity);
     }
     return entity;
@@ -511,6 +547,7 @@ function intersectPlayerToPlayer({entity, gameEntity, hits}) {
      gameEntity.type !== TYPE.PLAYER) return entity;
 
     if(hasHitTailNode2(hits) || hasHitHeadNode(hits)) {
+        console.log(`Player ${entity.name} killed by player ${gameEntity.name}`);
         return killEntity(entity);
     }
 
@@ -541,7 +578,10 @@ function intersectFoodToPlayer({entity, gameEntity, hits}) {
 function intersectPlayerToObstacle({entity, gameEntity, hits}) {
     if(entity.type === TYPE.PLAYER && gameEntity.type === TYPE.OBSTACLE && hasHitHeadNode(hits)) {
 
-        if (isInvulnerableTimedOut(entity)) return killEntity(entity);
+        if (isInvulnerableTimedOut(entity)) {
+            console.log(`Player ${entity.name} killed by obstacle`);
+            return killEntity(entity);
+        }
         
         return addScoreToEntity(entity, gameEntity.score);
     }
@@ -564,6 +604,7 @@ function intersectSelf({entity, gameEntity, hits}) {
         gameEntity.type !== TYPE.PLAYER) return entity;
 
     if(hasHitTailNode2(hits)) {
+        console.log(`Player ${entity.name} killed by its own tail`);
         return killEntity(entity);
     }
 
@@ -821,6 +862,7 @@ app.ws(CHANNEL, (ws, req) => {
     const refPlayer = createEntity({
         name: playerName,
         position: getCenterPosition(),
+        color: !room ? generateRandomColor() : generateUniqueColor(room),
     });
 
     if (!room) {
