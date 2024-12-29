@@ -11,10 +11,10 @@ services:
       - ./:/home/node/app
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.<unique-name>.rule=Host(`snekpvp.lol`)"
-      - "traefik.http.routers.<unique-name>.entrypoints=websecure"
-      - "traefik.http.routers.<unique-name>.tls.certResolver=letsencrypt"
-      - "traefik.http.services.<unique-name>.loadbalancer.server.port=3000"
+      - "traefik.http.routers.node.rule=Host(`snekpvp.lol`)"
+      - "traefik.http.routers.node.entrypoints=websecure"
+      - "traefik.http.routers.node.tls.certResolver=letsencrypt"
+      - "traefik.http.services.node.loadbalancer.server.port=3000"
     command: "make start-dev"
 networks:
   dokploy-network:
