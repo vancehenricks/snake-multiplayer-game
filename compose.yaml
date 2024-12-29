@@ -15,7 +15,7 @@ services:
       - "traefik.http.routers.node.entrypoints=websecure"
       - "traefik.http.routers.node.tls.certResolver=letsencrypt"
       - "traefik.http.services.node.loadbalancer.server.port=3000"
-    command: "make start-dev"
+    command: "make start"
 networks:
   dokploy-network:
     external: true
