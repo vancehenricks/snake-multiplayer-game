@@ -1,6 +1,6 @@
-const GAME_TICK_MS = 50;
+const GAME_TICK_MS = 60;
 const DEFAULT_ENTITY_SIZE = 5;
-const MAX_TAIL = 50;
+const MAX_TAIL = 30;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
 const DEFAULT_GAME_TIME_MS = 60000;
@@ -868,8 +868,8 @@ app.ws(CHANNEL, (ws, req) => {
 
         if (!room) return;
         const playerCount = playerEntitiesCount(room);
-        
-        if (playerCount <= 0 || !room.gameStarted && refPlayer.id === room.creatorId) {
+
+        if (playerCount <= 1 || !room.gameStarted && refPlayer.id === room.creatorId) {
             stopGameLoop(room);
             deleteRoom(room);
             deleteAllClients(room);

@@ -1,5 +1,5 @@
 const DEFAULT_IDLE_SPEED = 5;
-const CLIENT_TICK_MS = 50;
+const CLIENT_TICK_MS = 60;
 const ANIMATION_TICK_MS = 33;
 const CHANNEL = '/game';
 const TYPE = {
@@ -638,7 +638,7 @@ let isCreator = false;
 connection.onclose = ({code}) => {
     if(code === CLOSE_VIOLATION.GAME_ALREADY_STARTED) {
         alert('Game already started');
-        window.location.reload();
+        returnToMenu();
     }
     else if (code === CLOSE_VIOLATION.ENTITY_TIMEDOUT) {
         displayGameOver();
