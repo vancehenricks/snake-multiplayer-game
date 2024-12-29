@@ -5,7 +5,7 @@ include .env
 start-dev:
 	@echo "Setting up development environment..."
 	@echo "var ADDR = 'ws://localhost:${PORT}';" > client/public/config.js
-	@npm run start
+	@npm run start:dev
 
 start:
 	@echo "Setting up production environment..."

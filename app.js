@@ -38,11 +38,9 @@ const path = require('path');
 
 app.use(express.static(path.join(__dirname, 'client/public')));
 
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
     res.sendFile(path.join(__dirname, 'client/public', 'index.html'));
 });
-
-const aWss = expressWs.getWss(CHANNEL);
 
 server.listen(process.env.PORT)
 
