@@ -505,7 +505,7 @@ function addScoreToEntity(entity, score) {
 }
 
 function killEntity(entity) {
-    return {...entity, direction: {x: 0, y: 0}, status: STATUS.DEAD, touched: {id: true, direction: true, status: true,}};
+    return {...entity, status: STATUS.DEAD, touched: {id: true, status: true,}};
 }
 
 function intersectPlayerToPlayer({entity, gameEntity, hits}) {
