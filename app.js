@@ -25,29 +25,14 @@ const STATUS = {
 
 const CHANNEL = '/game';
 
-
-var https = require('https')
 var http = require('http')
-var fs = require('fs')
 const express = require('express');
 var expressWs = require('express-ws');
 require('dotenv').config();
 
-function createOptions () {
-
-    return { 
-        key: process.env.SSL_KEY,
-        cert: process.env.SSL_CERT
-    }
-};
-
 var app = express();
-var server = process.env.NODE_ENV !== 'development' ? https.createServer(createOptions(), app): http.createServer(app)
+var server = http.createServer(app)
 var expressWs = expressWs(app, server);
-
-console.log({
-    NODE_ENV: process.env.NODE_ENV,
-})
 
 const path = require('path');
 

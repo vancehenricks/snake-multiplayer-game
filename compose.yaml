@@ -6,15 +6,15 @@ services:
     user: "node"
     working_dir: /home/node/app
     expose:
-      - 3000
+      - ${PORT}
     networks:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.node.rule=Host(`snekpvp.lol`)"
+      - "traefik.http.routers.node.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.node.entrypoints=websecure"
       - "traefik.http.routers.node.tls.certResolver=letsencrypt"
-      - "traefik.http.services.node.loadbalancer.server.port=3000"
+      - "traefik.http.services.node.loadbalancer.server.port=${PORT}"
 networks:
   dokploy-network:
     external: true
