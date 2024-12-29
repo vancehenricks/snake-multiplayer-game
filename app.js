@@ -46,7 +46,6 @@ var server = process.env.ENV !== 'development' ? https.createServer(createOption
 var expressWs = expressWs(app, server);
 
 const path = require('path');
-const { kill } = require('process');
 
 app.use(express.static(path.join(__dirname, 'client/public')));
 

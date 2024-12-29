@@ -12,4 +12,14 @@ start-dev: extract-env-variables
 start: extract-env-variables
 	@echo "Setting up production environment..."
 	@echo "var ADDR = 'wss://snekpvp.lol:$(PORT)';" > client/public/config.js
+	@npm ci
 	@npm run start
+
+up:
+	@docker compose up -d
+
+down: 
+	@docker compose down
+
+destroy:
+	@docker compose down -v
