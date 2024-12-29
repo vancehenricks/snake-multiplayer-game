@@ -1,10 +1,11 @@
 const DEFAULT_IDLE_SPEED = 5;
-const CLIENT_TICK_MS = 33;
+const CLIENT_TICK_MS = 50;
 const ANIMATION_TICK_MS = 33;
 const CHANNEL = '/game';
 const TYPE = {
     PLAYER: 'player',
-    FOOD: 'food'
+    FOOD: 'food',
+    OBSTACLE: 'obstacle',
 }
 
 const STATUS = {
@@ -87,6 +88,33 @@ function updateScore() {
     document.getElementById('score').innerText = player.score;  
 }
 
+function renderObstacle({id, size, nodes}) {
+    const payload = getAnimationFramePayload(id);
+
+    const {x, y} = payload || nodes[0];
+
+    ctx.beginPath();
+    ctx.fillStyle = '#f1f1f1';
+    ctx.strokeStyle = '#242424';
+    ctx.lineWidth = 2; 
+
+    ctx.rect(x - size / 2, y - size / 2, size, size);
+    ctx.fill();
+    ctx.stroke();
+
+    if(payload) {
+        if(y > payload.refY-5 && y > payload.refY+5) {
+            nextAnimationFrame(id, {x, y: y+payload.increment, ...payload});
+        }
+        else {
+            nextAnimationFrame(id, {x, y: y-payload.increment, ...payload});
+        }
+    } else {
+        const initial = Math.random() * 5;
+        nextAnimationFrame(id, {x, y: y+initial, refY: y, increment : initial});
+    }
+}
+
 function renderFood({id, size, nodes}) {
     const payload = getAnimationFramePayload(id);
 
@@ -126,22 +154,25 @@ function renderSnakeHead({entity, isFill=false}) {
     ctx.lineCap = 'round';
     ctx.lineTo(node.x, node.y);
 
+    const diagonalOffset = 7;
+    const straightOffset = 10;
+
     if (entity.direction.y === -1 && entity.direction.x === 0) {
-        ctx.lineTo(node.x, node.y+10);
+        ctx.lineTo(node.x, node.y+straightOffset);
     } else if (entity.direction.y === 1 && entity.direction.x === 0) {  
-        ctx.lineTo(node.x, node.y-10);
+        ctx.lineTo(node.x, node.y-straightOffset);
     } else if (entity.direction.x === -1 && entity.direction.y === 0) {
-        ctx.lineTo(node.x+10, node.y);
+        ctx.lineTo(node.x+straightOffset, node.y);
     } else if (entity.direction.x === 1 && entity.direction.y === 0) {
-        ctx.lineTo(node.x-10, node.y);
+        ctx.lineTo(node.x-straightOffset, node.y);
     } else if (entity.direction.x === 1 && entity.direction.y === 1) {
-        ctx.lineTo(node.x-7, node.y-7);
+        ctx.lineTo(node.x-diagonalOffset, node.y-diagonalOffset);
     } else if (entity.direction.x === -1 && entity.direction.y === 1) {
-        ctx.lineTo(node.x+7, node.y-7);
+        ctx.lineTo(node.x+diagonalOffset, node.y-diagonalOffset);
     } else if (entity.direction.x === 1 && entity.direction.y === -1) {
-        ctx.lineTo(node.x-7, node.y+7);
+        ctx.lineTo(node.x-diagonalOffset, node.y+diagonalOffset);
     } else if (entity.direction.x === -1 && entity.direction.y === -1) {
-        ctx.lineTo(node.x+7, node.y+7);
+        ctx.lineTo(node.x+diagonalOffset, node.y+diagonalOffset);
     }
     
     ctx.stroke();
@@ -233,6 +264,10 @@ function renderEntities() {
         if(entity.id === player.id) return;
         if(entity.type === TYPE.FOOD) {
             renderFood(entity);
+            return;
+        }
+        if(entity.type === TYPE.OBSTACLE) {
+            renderObstacle(entity);
             return;
         }
 

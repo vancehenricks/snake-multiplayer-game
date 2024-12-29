@@ -1,11 +1,12 @@
-const GAME_TICK_MS = 33;
+const GAME_TICK_MS = 50;
 const DEFAULT_ENTITY_SIZE = 5;
 const MAX_TAIL = 50;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
-const DEFAULT_GAME_TIME_MS = 10000;
+const DEFAULT_GAME_TIME_MS = 60000;
 const DEFAULT_INVULNERABLE_TIMEOUT_MS = 30000;
 const MAX_FOOD = 10;
+const MAX_OBSTACLE = 10;
 const MAP = {
     WIDTH: 500,
     HEIGHT: 500
@@ -13,7 +14,8 @@ const MAP = {
 }
 const TYPE = {
     PLAYER: 'player',
-    FOOD: 'food'
+    FOOD: 'food',
+    OBSTACLE: 'obstacle'
 }
 
 const STATUS = {
@@ -44,6 +46,7 @@ var server = process.env.ENV !== 'development' ? https.createServer(createOption
 var expressWs = expressWs(app, server);
 
 const path = require('path');
+const { kill } = require('process');
 
 app.use(express.static(path.join(__dirname, 'client/public')));
 
@@ -339,6 +342,7 @@ function createRoom(roomId, entity) {
         gameTime: null,
         creatorId: entity.id,
         gameStarted: false,
+        singlePlayer: false,
     };
 }
 
@@ -388,6 +392,11 @@ function foodEntitiesCount(room) {
     return room ? room.gameEntities.filter((entity) => entity.type === TYPE.FOOD).length : 0;
 }
 
+function obstacleEntitiesCount(room) {
+    return room ? room.gameEntities.filter((entity) => entity.type === TYPE.OBSTACLE).length : 0;
+}
+
+
 function generateRandomRange(min, max) {
     return Math.floor((Math.random() * (max - min + 1)) + min);
  }
@@ -401,13 +410,29 @@ function generateRandomRange(min, max) {
         name: 'Food',
         tail: createTail({current: 0, max: 0}),
         size: DEFAULT_ENTITY_SIZE + score / .9,
-        color: generateRandomColor(),
         position: generateRandomPosition(),
         direction: createNode({x: 0, y: 0}),
         score,
     });
 
     addEntityToRoom(room, food);
+}
+
+function spawnObstacleEntities(room) {
+    if (!room || obstacleEntitiesCount(room) > MAX_OBSTACLE) return;
+
+    const score = generateRandomRange(3, 5);
+    const obstacle = createEntity({
+        type: TYPE.OBSTACLE,
+        name: 'Obstacle',
+        tail: createTail({current: 0, max: 0}),
+        size: DEFAULT_ENTITY_SIZE + score / .9,
+        position: generateRandomPosition(),
+        direction: createNode({x: 0, y: 0}),
+        score,
+    });
+
+    addEntityToRoom(room, obstacle);
 }
 
 
@@ -527,6 +552,26 @@ function intersectFoodToPlayer({entity, gameEntity, hits}) {
     return entity;
 }
 
+function intersectPlayerToObstacle({entity, gameEntity, hits}) {
+    if(entity.type === TYPE.PLAYER && gameEntity.type === TYPE.OBSTACLE && hasHitHeadNode(hits)) {
+
+        if (isInvulnerableTimedOut(entity)) return killEntity(entity);
+        
+        return addScoreToEntity(entity, gameEntity.score);
+    }
+
+    return entity;
+}
+
+function intersectObstacleToPlayer({entity, gameEntity, hits}) {
+
+    if(entity.type === TYPE.OBSTACLE && gameEntity.type === TYPE.PLAYER && hasHitHeadNode(hits)) {
+        return killEntity(entity);
+    }
+    return entity;
+}
+
+
 function intersectSelf({entity, gameEntity, hits}) {
     if (!isEntitySelf(entity, gameEntity) || 
         entity.type !== TYPE.PLAYER ||
@@ -591,7 +636,9 @@ function removeDeadEntities(room) {
         return true;
     });
 
-    if (countPlayerEntities(room) <= 1) {
+    const playerCount = playerEntitiesCount(room);
+    
+    if (playerCount <= 1 && !room.singlePlayer || playerCount <= 0 && room.singlePlayer) {
         getPlayerEntities(room).forEach((entity) => {
             const client = getClient(entity);
             client.close(4004, 'Game timedout');
@@ -607,6 +654,9 @@ function checkForIntersect(room) {
             const hits = hasIntersect(updatedEntity, gameEntity);
             updatedEntity = intersectPlayerToFood({entity: updatedEntity, gameEntity, hits});
             updatedEntity = intersectFoodToPlayer({entity: updatedEntity, gameEntity, hits});
+            updatedEntity = intersectObstacleToPlayer({entity: updatedEntity, gameEntity, hits});
+            updatedEntity = intersectPlayerToObstacle({entity: updatedEntity, gameEntity, hits});
+            
             if(!isInvulnerableTimedOut(updatedEntity)) return;
             updatedEntity = intersectPlayerToPlayer({entity: updatedEntity, gameEntity, hits});
             updatedEntity = intersectSelf({entity: updatedEntity, gameEntity, hits});
@@ -679,6 +729,7 @@ function touchNodes(entity) {
 
 function updateGame(room) {
     spawnFoodEntities(room);
+    spawnObstacleEntities(room);
     checkForIntersect(room);
     movePlayerEntities(room);
     calculateScoresOfPlayers(room);
@@ -701,7 +752,7 @@ function updateEntityFromRoom(room, entity) {
     }
 }
 
-function countPlayerEntities(room) {
+function playerEntitiesCount(room) {
     return [...room.gameEntities].filter(entity => entity.type === TYPE.PLAYER).length;
 }
 
@@ -709,10 +760,11 @@ function startGameLoop(room) {
     if (!room) return;
 
     room.gameStarted = true;
+    room.singlePlayer = playerEntitiesCount(room) === 1;
     room.gameTime = createGameTime();
     renderGameStatesToClient(room);
 
-    const hasActivePlayers = countPlayerEntities(room) > 0;
+    const hasActivePlayers = playerEntitiesCount(room) > 0;
 
     function gameTick() {
         if (!hasActivePlayers) {
@@ -827,7 +879,7 @@ app.ws(CHANNEL, (ws, req) => {
         console.log('Client disconnected from room:', roomId, 'IP:', req.ip);
 
         if (!room) return;
-        const playerCount = countPlayerEntities(room);
+        const playerCount = playerEntitiesCount(room);
         
         if (playerCount <= 0 || !room.gameStarted && refPlayer.id === room.creatorId) {
             stopGameLoop(room);
