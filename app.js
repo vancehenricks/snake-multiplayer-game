@@ -1,9 +1,9 @@
-const GAME_TICK_MS = 40;
+const GAME_TICK_MS = 50;
 const DEFAULT_ENTITY_SIZE = 5;
-const MAX_TAIL = 30;
-const DEFAULT_IDLE_SPEED = 3;
+const MAX_TAIL = 50;
+const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
-const DEFAULT_GAME_TIME_MS = 120000;
+const DEFAULT_GAME_TIME_MS = 60000;
 const DEFAULT_INVULNERABLE_TIMEOUT_MS = 30000;
 const MAX_FOOD = 10;
 const MAX_OBSTACLE = 10;
@@ -868,7 +868,7 @@ app.ws(CHANNEL, (ws, req) => {
 
         if (!room) return;
         const playerCount = playerEntitiesCount(room);
-
+        
         if (playerCount <= 1 || !room.gameStarted && refPlayer.id === room.creatorId) {
             stopGameLoop(room);
             deleteRoom(room);

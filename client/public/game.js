@@ -1,5 +1,5 @@
-const DEFAULT_IDLE_SPEED = 3;
-const CLIENT_TICK_MS = 40;
+const DEFAULT_IDLE_SPEED = 5;
+const CLIENT_TICK_MS = 50;
 const ANIMATION_TICK_MS = 33;
 const CHANNEL = '/game';
 const TYPE = {
