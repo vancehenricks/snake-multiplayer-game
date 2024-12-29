@@ -11,7 +11,7 @@ start-dev: extract-env-variables
 
 start: extract-env-variables
 	@echo "Setting up production environment..."
-	@echo "var ADDR = 'wss://snekpvp.lol:$(PORT)';" > client/public/config.js
+	@echo "var ADDR = 'wss://snekpvp.lol:443';" > client/public/config.js
 	@npm ci
 	@npm run start
 
