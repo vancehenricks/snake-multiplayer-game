@@ -1,21 +1,20 @@
 services:
   node:
-    image: "node:22"
+    build:
+      context: .
+      dockerfile: node.Dockerfile
     user: "node"
     working_dir: /home/node/app
     expose:
       - 3000
     networks:
       - dokploy-network
-    volumes:
-      - ./:/home/node/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.node.rule=Host(`snekpvp.lol`)"
       - "traefik.http.routers.node.entrypoints=websecure"
       - "traefik.http.routers.node.tls.certResolver=letsencrypt"
       - "traefik.http.services.node.loadbalancer.server.port=3000"
-    command: "make start"
 networks:
   dokploy-network:
     external: true
