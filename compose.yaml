@@ -3,8 +3,8 @@ services:
     image: "node:22"
     user: "node"
     working_dir: /home/node/app
-    ports:
-      - "3000:3000"
+    expose:
+      - 3000
     networks:
       - dokploy-network
     volumes:
