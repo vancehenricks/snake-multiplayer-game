@@ -575,6 +575,7 @@ function removeDeadEntities() {
 }
 
 function updateGameTime() {
+    if (gameTime === null) return;
     document.getElementById('timeLeftValue').innerText = convertToCountdown(gameTime);
 }
 
