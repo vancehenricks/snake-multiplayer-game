@@ -4,8 +4,18 @@ services:
     user: "node"
     working_dir: /home/node/app
     ports:
-      - "3000:3000"
+      - "3000"
+    networks:
+      - dokploy-network
     volumes:
       - ./:/home/node/app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.<unique-name>.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.<unique-name>.entrypoints=websecure"
+      - "traefik.http.routers.<unique-name>.tls.certResolver=letsencrypt"
+      - "traefik.http.services.<unique-name>.loadbalancer.server.port=3000"
     command: "make start-dev"
-  
+networks:
+  dokploy-network:
+    external: true
