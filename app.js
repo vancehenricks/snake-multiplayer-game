@@ -36,8 +36,8 @@ require('dotenv').config();
 function createOptions () {
 
     return { 
-        key: fs.readFileSync(process.env.KEY_PATH),
-        cert: fs.readFileSync(process.env.CERT_PATH)
+        key: process.env.SSL_KEY,
+        cert: process.env.SSL_CERT
     }
 };
 
