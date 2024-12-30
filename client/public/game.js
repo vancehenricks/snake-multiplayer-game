@@ -88,7 +88,7 @@ function updateScore() {
     document.getElementById('score').innerText = player.score;  
 }
 
-function renderObstacle({id, size, nodes}) {
+function renderObstacle({id, size, nodes}, isFill) {
     const payload = getAnimationFramePayload(id);
 
     const {x, y} = payload || nodes[0];
@@ -101,6 +101,17 @@ function renderObstacle({id, size, nodes}) {
     ctx.rect(x - size / 2, y - size / 2, size, size);
     ctx.fill();
     ctx.stroke();
+
+    if (isFill) {
+        const innerSize = size / 2;
+        ctx.beginPath();
+        ctx.fillStyle = '#242424';
+        ctx.strokeStyle = '#f1f1f1';
+        ctx.lineWidth = 2;
+        ctx.rect(x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
+        ctx.fill();
+        ctx.stroke();
+    }
 
     if(payload) {
         if(y > payload.refY-5 && y > payload.refY+5) {
@@ -152,7 +163,7 @@ function renderSnakeHead({entity, isFill=false}) {
     ctx.lineWidth = 2;
     ctx.strokeStyle = entity.color;
     ctx.lineCap = 'round';
-    ctx.lineTo(node.x, node.y);
+    ctx.moveTo(node.x, node.y);
 
     const diagonalOffset = 7;
     const straightOffset = 10;
@@ -222,16 +233,32 @@ function renderName(entity) {
         ctx.fillText(entity.name, x, y - 10);
     }
 }
-
 function renderSnake(entity) {
     ctx.beginPath();
-    entity.nodes.forEach(node => {
-        ctx.lineWidth = entity.size;
-        ctx.strokeStyle = entity.color;
-        ctx.lineCap = 'round';
-        ctx.lineTo(node.x, node.y);
+    ctx.lineWidth = entity.size;
+    ctx.strokeStyle = entity.color;
+    ctx.lineCap = 'round';
+
+    entity.nodes.forEach((node, index) => {
+        if (index === 0) {
+            ctx.moveTo(node.x, node.y);
+        } else {
+            ctx.lineTo(node.x, node.y);
+        }
     });
+
     ctx.stroke();
+
+    const nodesLeft = entity.nodes.slice(-1);
+    nodesLeft.forEach((node) => {
+        ctx.beginPath();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = entity.color;
+        ctx.arc(node.x, node.y, entity.size / 2, 0, Math.PI * 2, false);
+        ctx.fillStyle = '#f1f1f1';
+        ctx.fill();
+        ctx.stroke();
+    });
 }
 
 
@@ -267,7 +294,7 @@ function renderEntities() {
             return;
         }
         if(entity.type === TYPE.OBSTACLE) {
-            renderObstacle(entity);
+            renderObstacle(entity, isInvulnerableTimedOut(player));
             return;
         }
 
