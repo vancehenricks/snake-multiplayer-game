@@ -525,6 +525,7 @@ function killEntity(entity) {
 function respawnEntity(entity) {
     const newEntity = createEntity({
         id: entity.id,
+        name: entity.name,
         position: getCenterPosition(),
         invulnerable: createInvulnerableState({
             timeout: Date.now(),
