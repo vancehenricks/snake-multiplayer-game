@@ -951,7 +951,7 @@ app.ws(CHANNEL, (ws, req) => {
             deleteRoom(room);
             deleteAllClients(room);
             console.log(`Room ${roomId} has been removed due to no players.`);
-        } else if (!room.gameStarted) {
+        } else {
             removePlayerFromRoom(room, refPlayer);
             renderEverythingToClients(room, refPlayer);
         }
