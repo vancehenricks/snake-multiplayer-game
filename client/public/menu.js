@@ -155,14 +155,14 @@ function startCountdown() {
         countDownStartGame--;
         document.getElementById('gameOver').style.display = 'block';
 
-        if (countDownStartGame === 1) {
+        if (countDownStartGame === 0) {
             document.getElementById('gameOver').innerText = 'START!';
         } else {
             document.getElementById('gameOver').innerText = countDownStartGame;
         }
 
         document.getElementById('')
-        if (countDownStartGame <= 0) {
+        if (countDownStartGame < 0) {
             document.getElementById('gameOver').style.display = 'none';
             document.getElementById('scoreBoardGroup').style.display = 'block';
             document.getElementById('scoreLabel').style.display = 'block';
