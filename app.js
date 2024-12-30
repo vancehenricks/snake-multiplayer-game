@@ -215,15 +215,6 @@ function generateId() {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
-function generateRandomColor() {
-    var letters = '01234567';
-    var color = '#';
-    for (var i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 8)];
-    }
-    return color;
-}
-
 function generateRandomPosition() {
     const offset = 30;
     return {
@@ -280,7 +271,6 @@ function touchAllProperties() {
         id: true,
         position: true,
         name: true,
-        color: true,
         size: true,
         score: true,
         tail: true,
@@ -352,23 +342,11 @@ function removePlayerFromRoom(room, entity) {
     }
 }
 
-function generateUniqueColor(room) {
-    const colors = room.gameEntities.map(entity => entity.color);
-    let color = generateRandomColor();
-
-    for(let i = 0;colors.includes(color) && i < 10; i+=1) {
-        color = generateRandomColor();
-    }
-
-    return color;
-}
-
 function createEntity({
     type=TYPE.PLAYER,
     id=generateId(),
     position=generateRandomPosition(),
     name='Player',
-    color=generateRandomColor(),
     size=DEFAULT_ENTITY_SIZE,
     score=0,
     tail=createTail({current: 0, max: 4}),
@@ -380,7 +358,7 @@ function createEntity({
     const nodes = [createNode(position)];
     const touched=touchAllProperties();
 
-    const entity = {type, name, id, color, size, nodes, score, direction, invulnerable, tail, status, timeout, touched};
+    const entity = {type, name, id, size, nodes, score, direction, invulnerable, tail, status, timeout, touched};
 
     return entity;
 }
@@ -862,7 +840,6 @@ app.ws(CHANNEL, (ws, req) => {
     const refPlayer = createEntity({
         name: playerName,
         position: getCenterPosition(),
-        color: !room ? generateRandomColor() : generateUniqueColor(room),
     });
 
     if (!room) {

@@ -18,7 +18,6 @@ const ENTITY_PROPERTIES = [
     'id',
     'position',
     'name',
-    'color',
     'size',
     'score',
     'tail',
@@ -152,16 +151,17 @@ function renderFood({id, size, nodes}) {
     }
 }
 
-function renderSnakeHead({entity, isFill=false}) {
+function renderSnakeHead(entity) {
     const node = entity.nodes[0];
     const payload = getAnimationFramePayload(entity.id);
+    const isPlayer = entity.id === player.id;
 
     const size = payload?.size || entity.size * 2;
     const {x, y} = {x: node.x - 3, y: node.y - 5}
 
     ctx.beginPath();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = entity.color;
+    ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
     ctx.lineCap = 'round';
     ctx.moveTo(node.x, node.y);
 
@@ -190,9 +190,9 @@ function renderSnakeHead({entity, isFill=false}) {
 
     ctx.beginPath();
     ctx.lineWidth = 5;
-    ctx.strokeStyle = entity.color;
+    ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
     ctx.arc(x + 3, y + 5, size/3, 0, Math.PI * 2, false);
-    ctx.fillStyle = isFill ? entity.color : '#f1f1f1';
+    ctx.fillStyle = isPlayer ? '#f1f1f1' : '#242424';
     ctx.stroke();
     ctx.fill();
 
@@ -223,7 +223,7 @@ function renderName(entity) {
 
     const { y: dy } = entity.direction;
 
-    ctx.fillStyle = entity.color;
+    ctx.fillStyle = '#242424';
     ctx.font = '10px Arial';
     ctx.textAlign = 'center';
 
@@ -234,9 +234,11 @@ function renderName(entity) {
     }
 }
 function renderSnake(entity) {
+    const isPlayer = entity.id === player.id;
+
     ctx.beginPath();
     ctx.lineWidth = entity.size;
-    ctx.strokeStyle = entity.color;
+    ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
     ctx.lineCap = 'round';
 
     entity.nodes.forEach((node, index) => {
@@ -253,7 +255,7 @@ function renderSnake(entity) {
     nodesLeft.forEach((node) => {
         ctx.beginPath();
         ctx.lineWidth = 2;
-        ctx.strokeStyle = entity.color;
+        ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
         ctx.arc(node.x, node.y, entity.size / 2, 0, Math.PI * 2, false);
         ctx.fillStyle = '#f1f1f1';
         ctx.fill();
@@ -264,7 +266,7 @@ function renderSnake(entity) {
 
 function renderPlayer() {
     renderSnake(player);;
-    renderSnakeHead({entity: player});
+    renderSnakeHead(player);
     renderInvulnerableEffect(player);
 }
 
@@ -273,14 +275,15 @@ function clearCanvas() {
 }
 
 function renderInvulnerableEffect(entity) {
-    const {nodes, size, color} = entity;
+    const {nodes, size} = entity;
     const {x, y} = nodes[0];
-    
+    const isPlayer = entity.id === player.id;
+
     if(isInvulnerableTimedOut(entity)) return;
 
     ctx.beginPath();
     ctx.lineWidth = 1;
-    ctx.strokeStyle = color;
+    ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
     ctx.arc(x, y, size*1.5, 0, Math.PI * 2, false);
     ctx.stroke();
 }
@@ -299,7 +302,7 @@ function renderEntities() {
         }
 
         renderSnake(entity);
-        renderSnakeHead({entity, isFill: true});
+        renderSnakeHead(entity);
         renderName(entity);
         renderInvulnerableEffect(entity);
     });
