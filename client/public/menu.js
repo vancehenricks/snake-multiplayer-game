@@ -145,6 +145,7 @@ function restoreRoomId() {
 }
 
 function winner(text) {
+    document.getElementById('gameOver').style.display = 'block';
     document.getElementById('gameOver').innerText = 'WINNER!\n' + text;
 }
 
@@ -183,6 +184,7 @@ function gameOver() {
     document.getElementById('tryAgainButton').style.display = 'block';
     document.getElementById('returnToMenuButton').style.display = 'block';
     document.getElementById('entityEffects').style.display = 'none';
+    document.getElementById('gameOver').style.display = 'block';
     document.getElementById('gameOver').innerText = 'GAME OVER!';
 }
 
