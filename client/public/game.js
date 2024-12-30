@@ -836,6 +836,7 @@ connection.onmessage = ({data}) => {
         }
 
         if(gameStarted) {
+            startCountdown();
             startGame();
         }
         

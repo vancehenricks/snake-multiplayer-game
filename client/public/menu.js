@@ -150,6 +150,23 @@ function winner(text) {
     document.getElementById('gameOver').innerText = 'WINNER!\n' + text;
 }
 
+function startCountdown() {
+    let timeLeft = 6;
+
+    function countdown() {
+        timeLeft--;
+        document.getElementById('gameOver').style.display = 'block';
+        document.getElementById('gameOver').innerText = timeLeft;
+        if (timeLeft <= 0) {
+            document.getElementById('gameOver').style.display = 'none';
+        } else {
+            setTimeout(countdown, 1000);
+        }
+    }
+
+    countdown();
+}
+
 function gameOver() {
     document.getElementById('playerNameInput').disabled = false;
     document.getElementById('timeLeftLabel').style.display = 'none';

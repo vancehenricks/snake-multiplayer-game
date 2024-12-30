@@ -809,7 +809,7 @@ function startGameLoop(room) {
         room.tickTimeOutId = setTimeout(gameTick, GAME_TICK_MS);
     }
 
-    gameTick();
+    setTimeout(gameTick, 6000);
 }
 
 function stopGameLoop(room) {
