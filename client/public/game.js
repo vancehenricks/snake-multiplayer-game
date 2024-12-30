@@ -87,14 +87,24 @@ function updateScore() {
     document.getElementById('score').innerText = player.score;  
 }
 
+function createAnimationId(entityId, animationName) {
+    return entityId + ',' + animationName;
+}
+
+function getEntityIdFromAnimationId(animationId) {
+    return animationId.split(',')[0];
+}
+
 function renderObstacle({id, size, nodes}, isFill) {
-    const payload = getAnimationFramePayload(id);
+    const animationId = createAnimationId(id, 'obstacle');
+    const payload = getAnimationFramePayload(animationId);
 
     const {x, y} = payload || nodes[0];
 
     ctx.beginPath();
     ctx.fillStyle = '#f1f1f1';
     ctx.strokeStyle = '#242424';
+    ctx.setLineDash([]);
     ctx.lineWidth = 2; 
 
     ctx.rect(x - size / 2, y - size / 2, size, size);
@@ -106,6 +116,7 @@ function renderObstacle({id, size, nodes}, isFill) {
         ctx.beginPath();
         ctx.fillStyle = '#242424';
         ctx.strokeStyle = '#f1f1f1';
+        ctx.setLineDash([]);
         ctx.lineWidth = 2;
         ctx.rect(x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
         ctx.fill();
@@ -114,19 +125,20 @@ function renderObstacle({id, size, nodes}, isFill) {
 
     if(payload) {
         if(y > payload.refY-5 && y > payload.refY+5) {
-            nextAnimationFrame(id, {x, y: y+payload.increment, ...payload});
+            nextAnimationFrame(animationId, {x, y: y+payload.increment, ...payload});
         }
         else {
-            nextAnimationFrame(id, {x, y: y-payload.increment, ...payload});
+            nextAnimationFrame(animationId, {x, y: y-payload.increment, ...payload});
         }
     } else {
         const initial = Math.random() * 5;
-        nextAnimationFrame(id, {x, y: y+initial, refY: y, increment : initial});
+        nextAnimationFrame(animationId, {x, y: y+initial, refY: y, increment : initial});
     }
 }
 
 function renderFood({id, size, nodes}) {
-    const payload = getAnimationFramePayload(id);
+    const animationId = createAnimationId(id, 'spawn');
+    const payload = getAnimationFramePayload(animationId);
 
     const {x, y} = payload || nodes[0];
 
@@ -140,20 +152,21 @@ function renderFood({id, size, nodes}) {
 
     if(payload) {
         if(y > payload.refY-5 && y > payload.refY+5) {
-            nextAnimationFrame(id, {x, y: y+payload.increment, ...payload});
+            nextAnimationFrame(animationId, {x, y: y+payload.increment, ...payload});
         }
         else {
-            nextAnimationFrame(id, {x, y: y-payload.increment, ...payload});
+            nextAnimationFrame(animationId, {x, y: y-payload.increment, ...payload});
         }
     } else {
         const initial = Math.random() * 5;
-        nextAnimationFrame(id, {x, y: y+initial, refY: y, increment : initial});
+        nextAnimationFrame(animationId, {x, y: y+initial, refY: y, increment : initial});
     }
 }
 
 function renderSnakeHead(entity) {
     const node = entity.nodes[0];
-    const payload = getAnimationFramePayload(entity.id);
+    const animationId = createAnimationId(entity.id, 'eat');
+    const payload = getAnimationFramePayload(animationId);
     const isPlayer = entity.id === player.id;
 
     const size = payload?.size || entity.size * 2;
@@ -198,22 +211,21 @@ function renderSnakeHead(entity) {
 
     if(payload) {
         if (entity.animation.eat) {
-            nextAnimationFrame(entity.id, { ...payload, eat: payload.eat+1});
+            nextAnimationFrame(animationId, { ...payload, eat: payload.eat+1});
         }
-
         if(payload.eat > 0) {
             if(size < payload.expected && !payload.exit) {
-                nextAnimationFrame(entity.id, {...payload, size: size+3});
+                nextAnimationFrame(animationId, {...payload, size: size+3});
             } else {
                 if (size > payload.initial) {
-                    nextAnimationFrame(entity.id, {...payload, size : size-3, exit: true});
+                    nextAnimationFrame(animationId, {...payload, size : size-3, exit: true});
                 } else {
-                    nextAnimationFrame(entity.id, {...payload, size: payload.initial, eat: payload.eat-1, exit: false});
+                    nextAnimationFrame(animationId, {...payload, size: payload.initial, eat: payload.eat-1, exit: false});
                 }
             }
         }
     } else if (entity.animation.eat) {
-        nextAnimationFrame(entity.id, {size: size, initial: size, expected: size+6, eat: 1, exit: false});
+        nextAnimationFrame(animationId, {size: size, initial: size, expected: size+6, eat: 1, exit: false});
     }
 }
 
@@ -228,9 +240,9 @@ function renderName(entity) {
     ctx.textAlign = 'center';
 
     if (dy === -1) {
-        ctx.fillText(entity.name, x, y + 15);   
+        ctx.fillText(entity.name, x, y + 17);   
     } else {
-        ctx.fillText(entity.name, x, y - 10);
+        ctx.fillText(entity.name, x, y - 12);
     }
 }
 function renderSnake(entity) {
@@ -302,8 +314,43 @@ function renderInvulnerableEffect(entity) {
     }
 }
 
+function createDiagonalPattern() {
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = 10;
+    patternCanvas.height = 10;
+    const patternCtx = patternCanvas.getContext('2d');
+
+    patternCtx.strokeStyle = '#d3d3d3';
+    patternCtx.lineWidth = 1;
+    patternCtx.beginPath();
+    patternCtx.moveTo(0, 0);
+    patternCtx.lineTo(10, 10);
+    patternCtx.stroke();
+
+    return ctx.createPattern(patternCanvas, 'repeat');
+}
+
+function renderSpawnArea() {
+    const squareSize = 50;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+
+
+    const pattern = createDiagonalPattern();
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#d3d3d3';
+    ctx.fillStyle = pattern;
+    ctx.lineWidth = 1;
+    ctx.rect(centerX - squareSize / 2, centerY - squareSize / 2, squareSize, squareSize);
+    ctx.fill();
+    ctx.stroke();
+}
+
 function renderEntities() {
     clearCanvas();
+    renderSpawnArea();
     [...gameEntities].forEach((entity) => {
         if(entity.id === player.id) return;
         if(entity.type === TYPE.FOOD) {
@@ -321,7 +368,8 @@ function renderEntities() {
         renderInvulnerableEffect(entity);
     });
 
-    renderPlayer();}
+    renderPlayer();
+}
 
 function convert1DArrayToNodes (array) {
     let nodes = [];
@@ -462,7 +510,7 @@ function getRoomId() {
 
 function cleanupStaleAnimations() {
     gameAnimation = [...gameAnimation].filter((animation) => {
-        return [...gameEntities].find((entity) => entity.id === animation.id);
+        return [...gameEntities].find((entity) => entity.id === getEntityIdFromAnimationId(animation.id));
     });
 }
 
@@ -579,7 +627,7 @@ function addAnimationIndicatorsToEntity(entity) {
             }
         }
     };
-    
+
     return {
         ...entity,
         animation: {
@@ -665,6 +713,7 @@ function convertEntities1DArrayToNodes(entities) {
         return entity;
     });
 }
+
 
 establishConnection();
 createCanvas();
