@@ -65,14 +65,15 @@
             <p id="invulnerable"></p>
           </div>
           <div id="scoreLabel">
-            <label>Score: <span id="score">0</span></label>
+            <label>🏆 Score: <span id="score">0</span></label>
           </div>
           <div id="timeLeftLabel">
-            <label>Time left: <span id="timeLeftValue">0</span></label>
+            <label>⏱️ Time left: <span id="timeLeftValue">0</span></label>
           </div>
           <div>
             <button id="createRoomButton">Join Room</button>
             <button id="startGameButton">Start Game</button>
+            <button id="readyButton">Ready</button>
             <button id="tryAgainButton">Try Again</button>
           </div>
           <div>
@@ -101,11 +102,14 @@
             </div>
             <div> WASD or Arrow keys to move</div>
             <div>
-              Objectives:
+              Mechanics:
             </div>
-            <div>Eat food to earn more points, eating other snake earns its all points gathered.
-            <br/>The square earns more points than circle but will not be edible once snake is vulnerable.
-            <br/>The snake head is weak once vulnerable.</div>
+            <div>Highest points wins the game.
+            <br/>Square food gives more points than circle food.
+            <br/>Eating other snakes will get all their points.
+            <br/>Snake head when shield is down can be killed by square and other snakes.
+            <br/>Hitting border will kill the snake irregardless.
+            </div>
           </div>
         </div>
       </section>

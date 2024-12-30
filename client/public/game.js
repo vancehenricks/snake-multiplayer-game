@@ -77,6 +77,11 @@ function sendStartGameToServer() {
     sendToServer({startGame: true});
 }
 
+function sendReadyToServer() {
+    isPlayerReady = !isPlayerReady;
+    sendToServer({ready: isPlayerReady});
+}
+
 function createCanvas() {
     canvas = document.getElementById('gameCanvas');
     canvas.width = 500;
@@ -104,7 +109,6 @@ function renderObstacle({id, size, nodes}, isFill) {
     ctx.beginPath();
     ctx.fillStyle = '#f1f1f1';
     ctx.strokeStyle = '#242424';
-    ctx.setLineDash([]);
     ctx.lineWidth = 2; 
 
     ctx.rect(x - size / 2, y - size / 2, size, size);
@@ -116,7 +120,6 @@ function renderObstacle({id, size, nodes}, isFill) {
         ctx.beginPath();
         ctx.fillStyle = '#242424';
         ctx.strokeStyle = '#f1f1f1';
-        ctx.setLineDash([]);
         ctx.lineWidth = 2;
         ctx.rect(x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
         ctx.fill();
@@ -167,7 +170,7 @@ function renderSnakeHead(entity) {
     const node = entity.nodes[0];
     const animationId = createAnimationId(entity.id, 'eat');
     const payload = getAnimationFramePayload(animationId);
-    const isPlayer = entity.id === player.id;
+    const isPlayer = isEntityPlayer(entity);
 
     const size = payload?.size || entity.size * 2;
     const {x, y} = {x: node.x - 3, y: node.y - 5}
@@ -205,7 +208,7 @@ function renderSnakeHead(entity) {
     ctx.lineWidth = 5;
     ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
     ctx.arc(x + 3, y + 5, size/3, 0, Math.PI * 2, false);
-    ctx.fillStyle = isPlayer ? '#f1f1f1' : '#242424';
+    ctx.fillStyle = '#f1f1f1';
     ctx.stroke();
     ctx.fill();
 
@@ -230,23 +233,35 @@ function renderSnakeHead(entity) {
 }
 
 
-function renderName(entity) {
-    const { x, y } = entity.nodes[0];
-
-    const { y: dy } = entity.direction;
+function renderLabel({ direction, node, value}) {
+    const { x, y } = node;
+    const { y: dy } = direction;
 
     ctx.fillStyle = '#242424';
-    ctx.font = '10px Arial';
+    ctx.font = '12px Arial';
     ctx.textAlign = 'center';
 
     if (dy === -1) {
-        ctx.fillText(entity.name, x, y + 17);   
+        ctx.fillText(value, x, y + 28);   
     } else {
-        ctx.fillText(entity.name, x, y - 12);
+        ctx.fillText(value, x, y - 22);
     }
 }
+
+function renderName(entity) {
+    renderLabel({direction: entity.direction, node: entity.nodes[0], value: entity.name});
+}
+
+function renderInvulnerableTimeLeftLabel(entity) {
+    const secondsLeft = convertToSeconds(getRemainingTime(entity.invulnerable));
+
+    if (secondsLeft < 10 && secondsLeft > 0) {
+        renderLabel({direction: entity.direction, node: entity.nodes[0], value: secondsLeft});
+    }
+}
+
 function renderSnake(entity) {
-    const isPlayer = entity.id === player.id;
+    const isPlayer = isEntityPlayer(entity);
 
     ctx.beginPath();
     ctx.lineWidth = entity.size;
@@ -280,6 +295,7 @@ function renderPlayer() {
     renderSnake(player);;
     renderSnakeHead(player);
     renderInvulnerableEffect(player);
+    renderInvulnerableTimeLeftLabel(player);
 }
 
 function clearCanvas() {
@@ -290,7 +306,7 @@ function renderInvulnerableEffect(entity) {
     const payload = getAnimationFramePayload(entity.id);
     const {nodes, size} = entity;
     const {x, y} = nodes[0];
-    const isPlayer = entity.id === player.id;
+    const isPlayer = isEntityPlayer(entity);
 
     if(isInvulnerableTimedOut(entity)) return;
 
@@ -450,10 +466,22 @@ function isInvulnerableTimedOut(entity) {
     return false;
 }
 
+function convertToSeconds(ms) {
+    return Math.floor(ms / 1000);
+}
+
+function convertToMinutes(ms) {
+    return Math.floor(ms / 60);
+}
+
+function getRemainingTime({ timeout, maxMs }) {
+    return  maxMs - (Date.now() - timeout);
+}
+
 function convertToCountdown({ timeout, maxMs }) {
     const remainingMs = maxMs - (Date.now() - timeout);
-    const remainingSeconds = Math.floor(remainingMs / 1000);
-    const remainingMinutes = Math.floor(remainingSeconds / 60);
+    const remainingSeconds = convertToSeconds(remainingMs);
+    const remainingMinutes = convertToMinutes(remainingSeconds);
 
     if (remainingMinutes > 0) {
         const seconds = remainingSeconds % 60;
@@ -467,7 +495,7 @@ function updateVulnerableEffect() {
     const invulnerableTimeleft = convertToCountdown(player.invulnerable);
 
     if(!isInvulnerableTimedOut(player)) {
-        document.getElementById('invulnerable').innerText = 'invulnerable: ' + invulnerableTimeleft;
+        document.getElementById('invulnerable').innerText = '🛡️ Shield: ' + invulnerableTimeleft;
     } else {
         document.getElementById('invulnerable').innerText = '';
     }
@@ -483,10 +511,22 @@ function updateScoreBoard() {
     const scoreBoardTable = document.getElementById('scoreBoard');
     scoreBoardTable.innerHTML = '';
     const column = document.createElement('ol');
-    scoreBoard.forEach((scoreEntry) => {
+    scoreBoard.forEach((scoreEntry, index) => {
+        if (index === 0) {
+            addCellToTable(column, '👑 ' + scoreEntry.name + ': ' + scoreEntry.score);
+            return;
+        }
         addCellToTable(column, scoreEntry.name + ': ' + scoreEntry.score);
     });
     scoreBoardTable.appendChild(column);
+}
+
+function isInReadyList(entity) {
+    return readyList.includes(entity.id);
+}
+
+function isEntityPlayer(entity) {
+    return entity.id === player.id;
 }
 
 function updatePlayerList() {
@@ -494,7 +534,19 @@ function updatePlayerList() {
     playerList.innerHTML = '';
     const column = document.createElement('ol');
     [...gameEntities].filter((entity) => entity.type === TYPE.PLAYER).forEach((entity) => {
-        addCellToTable(column, entity.name );
+        
+        const isEntityCreator = isCreator(entity.id);
+        let label = isEntityCreator ? '(Host)' : '';
+
+        if (!isEntityCreator) {
+            label = isInReadyList(entity) ? '✅' : '❌';
+        }
+
+        if (isEntityPlayer(entity)) {
+            label = isPlayerReady ? '(You)✅' : '(You)❌';
+        }
+        
+        addCellToTable(column, entity.name + label);
     });
     playerList.appendChild(column);
 }
@@ -688,8 +740,17 @@ function updateGame() {
     removeDeadEntities();
 }
 
+function isCreator(id = player.id) {
+
+    if (creatorId === id) {
+        console.log(creatorId, id);
+
+    }
+    return creatorId === id;
+}
+
 function startGameLoop () {
-    if (isCreator) {
+    if (isCreator()) {
         sendStartGameToServer();
     }
     startGameUpdate = true;
@@ -714,6 +775,11 @@ function convertEntities1DArrayToNodes(entities) {
     });
 }
 
+function readyListMatchesCurrentPlayers() {
+    const players = [...gameEntities].filter(entity => entity.type === TYPE.PLAYER);
+    return players.length === readyList.length;
+}
+
 
 establishConnection();
 createCanvas();
@@ -726,7 +792,9 @@ let scoreBoard = [];
 let keys = {};
 let startGameUpdate = false;
 let gameTime = null;
-let isCreator = false;
+let creatorId = null;
+let readyList = [];
+let isPlayerReady = false;
 
 connection.onclose = ({code}) => {
     if(code === CLOSE_VIOLATION.GAME_ALREADY_STARTED) {
@@ -746,18 +814,31 @@ connection.onmessage = ({data}) => {
         const {playerId, 
             entities, 
             scoreBoard: sb, 
-            isCreator: ic, 
+            creatorId: ci,
+            readyList: rl, 
             gameTime: gt,
             gameStarted,
         } = JSON.parse(data);
 
+
+        if (rl) {
+            readyList = rl;
+            if(readyListMatchesCurrentPlayers() && isCreator()) {
+                showStartGameButton();
+            } else {
+                hideStartGameButton();
+            }
+        }
+        
         if (sb) {
             scoreBoard = sb;
         }
 
-        if (ic) {
-            isCreator = true;
-            showStartGameButton();
+        if (ci) {
+            creatorId = ci;
+            if(!isCreator(playerId)) {
+                showReadyButton();
+            }
         }
 
         if(gt) {

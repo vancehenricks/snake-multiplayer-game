@@ -4,6 +4,19 @@ function showStartGameButton() {
     document.getElementById('startGameButton').addEventListener('click', startGame);
 }
 
+function hideStartGameButton() {
+    document.getElementById('startGameButton').style.display = 'none';
+}
+
+function showReadyButton() {
+    document.getElementById('readyButton').style.display = 'block';
+    document.getElementById('readyButton').addEventListener('click', sendReadyToServer);
+}
+
+function hideReadyButton() {
+    document.getElementById('readyButton').style.display = 'none';
+}
+
 function createRoom() {
     if(document.getElementById('playerNameInput').value === '') {
         alert('Please enter a name');
@@ -37,10 +50,11 @@ function startGame() {
     document.getElementById('playerListGroup').style.display = 'none';
     document.getElementById('scoreBoardGroup').style.display = 'block';
     document.getElementById('scoreLabel').style.display = 'block';
-    document.getElementById('startGameButton').style.display = 'none';
     document.getElementById('entityEffects').style.display = 'block';
     document.getElementById('timeLeftLabel').style.display = 'block';
-    startGameLoop(); 
+    hideReadyButton();
+    hideStartGameButton();
+    startGameLoop();
 }
 
 function addParametersToUrl({param, value, url}) {
@@ -171,14 +185,14 @@ function startup() {
     document.getElementById('scoreBoardGroup').style.display = 'none';
     document.getElementById('playerListGroup').style.display = 'none';
     document.getElementById('tryAgainButton').style.display = 'none';
-    document.getElementById('startGameButton').style.display = 'none';
     document.getElementById('returnToMenuButton').style.display = 'none';
     document.getElementById('createRoomButton').style.display = 'block';
     document.getElementById('createRoomButton').addEventListener('click', createRoom);
     document.getElementById('tryAgainButton').addEventListener('click', tryAgain);
     document.getElementById('returnToMenuButton').addEventListener('click', returnToMenu);
     document.getElementById('timeLeftLabel').style.display = 'none';
-
+    hideReadyButton();
+    hideStartGameButton();
     startGameRightAway();
     restoreScore();
 }

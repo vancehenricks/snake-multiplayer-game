@@ -113,6 +113,14 @@ function untouchedGameEntities(room) {
     });
 }
 
+function sendReadyToClients(room, player) {
+    getPlayerEntities(room).forEach((entity) => {
+        if (entity.id === player.id) return;
+        const client = getClient(entity);
+        client?.send(JSON.stringify({readyList: room.readyList}));
+    })  
+}
+
 function renderEverythingToClients(room, player) {
 
     getPlayerEntities(room).forEach((entity) => {
@@ -124,7 +132,7 @@ function renderEverythingToClients(room, player) {
             data = { playerId: player.id };
         }
 
-        client?.send(JSON.stringify({...data, entities: room.gameEntities, isCreator: room.creatorId === player.id}));
+        client?.send(JSON.stringify({...data, entities: room.gameEntities, creatorId: room.creatorId }));
     })
 }
 
@@ -320,6 +328,7 @@ function createRoom(roomId, entity) {
         creatorId: entity.id,
         gameStarted: false,
         singlePlayer: false,
+        readyList: [],
     };
 }
 
@@ -833,6 +842,28 @@ function renderGameStatesToClient(room) {
     });
 };
 
+function addEntityToReadyList(room, entity) {
+    const alreadyExist = [...room.readyList].some(entityId => entityId === entity.id);
+
+    if (alreadyExist) return;
+    room.readyList = [...room.readyList, entity.id];
+}
+
+function removeEntityToReadyList(room, entity) {
+    room.readyList = [...room.readyList].filter(entityId => entityId
+        !== entity.id);
+}
+
+function readyListMatchesCurrentPlayers(room) {
+    return room.readyList.length === playerEntitiesCount(room);
+};
+
+function sanitizeBoolean(value) {
+    if (typeof value === 'boolean') return value;
+    
+    return undefined;
+}
+
 app.ws(CHANNEL, (ws, req) => {
     const roomId = req.query.roomId;
     const playerName = req.query.playerName;
@@ -870,14 +901,17 @@ app.ws(CHANNEL, (ws, req) => {
 
     createClient(refPlayer, ws);
     addEntityToRoom(room, refPlayer);
+    addEntityToReadyList(room, refPlayer);
     renderEverythingToClients(room, refPlayer);
 
     console.log('Client connected to room:', roomId, 'IP:', req.ip);
 
     ws.on('message', (data) => {
         try {
-            const {player, startGame} = JSON.parse(data);
+            const {player, startGame: sg, ready: ry} = JSON.parse(data);
 
+            let startGame = sanitizeBoolean(sg);
+            let ready = sanitizeBoolean(ry);
             let playerUpdated = sanitizeEntity(player, refPlayer);
 
             if (playerUpdated) {
@@ -886,8 +920,15 @@ app.ws(CHANNEL, (ws, req) => {
                 updateEntityFromRoom(room, playerUpdated);
             }
 
-            if (startGame && refPlayer.id === room.creatorId && !room.gameStarted) {
-     
+            if (ready) {
+                addEntityToReadyList(room, refPlayer);
+                sendReadyToClients(room, refPlayer);
+            } else if (ready === false) { //do not remove if undefined
+                removeEntityToReadyList(room, refPlayer);
+                sendReadyToClients(room, refPlayer);
+            }
+
+            if (startGame && refPlayer.id === room.creatorId && !room.gameStarted && readyListMatchesCurrentPlayers(room)) {
                 startGameLoop(room);
             }
                 
