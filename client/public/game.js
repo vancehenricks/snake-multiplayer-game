@@ -275,17 +275,31 @@ function clearCanvas() {
 }
 
 function renderInvulnerableEffect(entity) {
+    const payload = getAnimationFramePayload(entity.id);
     const {nodes, size} = entity;
     const {x, y} = nodes[0];
     const isPlayer = entity.id === player.id;
 
     if(isInvulnerableTimedOut(entity)) return;
 
+    const endAngle = payload?.value || 0;
+
     ctx.beginPath();
     ctx.lineWidth = 1;
     ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
-    ctx.arc(x, y, size*1.5, 0, Math.PI * 2, false);
+    ctx.arc(x, y, size+endAngle, 5-endAngle, endAngle, false);
     ctx.stroke();
+
+
+    if(payload) {
+        if (endAngle <= payload.expected) {
+        nextAnimationFrame(entity.id, {...payload, value: endAngle+0.5});
+        } else {
+            nextAnimationFrame(entity.id, {...payload, value: 0, expected: Math.PI*2});
+        }
+    } else {
+        nextAnimationFrame(entity.id, { intial: 0, value: 0, expected: Math.PI*2});
+    }
 }
 
 function renderEntities() {
