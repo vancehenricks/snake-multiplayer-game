@@ -496,7 +496,7 @@ function updateVulnerableEffect() {
     const invulnerableTimeleft = convertToCountdown(player.invulnerable);
 
     if(!isInvulnerableTimedOut(player)) {
-        document.getElementById('invulnerable').innerText = '🛡️ Shield: ' + invulnerableTimeleft;
+        document.getElementById('invulnerable').innerText = 'Shield 🛡️: ' + invulnerableTimeleft;
     } else {
         document.getElementById('invulnerable').innerText = '';
     }
@@ -514,7 +514,7 @@ function updateScoreBoard() {
     const column = document.createElement('ol');
     scoreBoard.forEach((scoreEntry, index) => {
         if (index === 0) {
-            addCellToTable(column, '👑 ' + scoreEntry.name + ': ' + scoreEntry.score);
+            addCellToTable(column, scoreEntry.name + ' 👑: ' + scoreEntry.score);
             return;
         }
         addCellToTable(column, scoreEntry.name + ': ' + scoreEntry.score);
