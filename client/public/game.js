@@ -820,16 +820,6 @@ connection.onmessage = ({data}) => {
             gameStarted,
         } = JSON.parse(data);
 
-
-        if (rl) {
-            readyList = rl;
-            if(readyListMatchesCurrentPlayers() && isCreator()) {
-                showStartGameButton();
-            } else {
-                hideStartGameButton();
-            }
-        }
-        
         if (sb) {
             scoreBoard = sb;
         }
@@ -861,8 +851,17 @@ connection.onmessage = ({data}) => {
                 player = getPlayer(convertedEntities);
                 gameEntities = convertedEntities;
             }
-
         }
+
+        if (rl) {
+            readyList = rl;
+            if(readyListMatchesCurrentPlayers() && isCreator()) {
+                showStartGameButton();
+            } else {
+                hideStartGameButton();
+            }
+        }
+        
         
     } catch (err) {
         console.error(err);
