@@ -5,6 +5,7 @@ const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
 const DEFAULT_GAME_TIME_MS = 120000;
 const DEFAULT_INVULNERABLE_TIMEOUT_MS = 30000;
+const RESPAWN_INVULNERABLE_TIMEOUT_MS = 5000;
 const MAX_FOOD = 10;
 const MAX_OBSTACLE = 10;
 const MAP = {
@@ -450,6 +451,7 @@ function stopWhenOutOfBounds(entity) {
 
         if(entity.type === TYPE.PLAYER) {
             console.log(`Player ${entity.name} killed by world border`);
+            return respawnEntity(entity);
         }
 
         return killEntity(entity);
@@ -520,13 +522,26 @@ function killEntity(entity) {
     return {...entity, status: STATUS.DEAD, touched: {id: true, status: true,}};
 }
 
+function respawnEntity(entity) {
+    const newEntity = createEntity({
+        id: entity.id,
+        position: getCenterPosition(),
+        invulnerable: createInvulnerableState({
+            timeout: Date.now(),
+            maxMs: RESPAWN_INVULNERABLE_TIMEOUT_MS,
+        }),
+    });
+
+    return newEntity;
+}
+
 function intersectPlayerToPlayer({entity, gameEntity, hits}) {
     if (isEntitySelf(entity, gameEntity) || entity.type !== TYPE.PLAYER || 
      gameEntity.type !== TYPE.PLAYER) return entity;
 
     if(hasHitTailNode2(hits) || hasHitHeadNode(hits)) {
         console.log(`Player ${entity.name} killed by player ${gameEntity.name}`);
-        return killEntity(entity);
+        return respawnEntity(entity);
     }
 
     if(hasHitTailNode1(hits)) {
@@ -558,7 +573,7 @@ function intersectPlayerToObstacle({entity, gameEntity, hits}) {
 
         if (isInvulnerableTimedOut(entity)) {
             console.log(`Player ${entity.name} killed by obstacle`);
-            return killEntity(entity);
+            return respawnEntity(entity);
         }
         
         return addScoreToEntity(entity, gameEntity.score);
@@ -583,7 +598,7 @@ function intersectSelf({entity, gameEntity, hits}) {
 
     if(hasHitTailNode2(hits)) {
         console.log(`Player ${entity.name} killed by its own tail`);
-        return killEntity(entity);
+        return respawnEntity(entity);
     }
 
     return entity;
