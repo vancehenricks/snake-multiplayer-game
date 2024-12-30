@@ -48,13 +48,11 @@ function createRoom() {
 
 function startGame() {
     document.getElementById('playerListGroup').style.display = 'none';
-    document.getElementById('scoreBoardGroup').style.display = 'block';
-    document.getElementById('scoreLabel').style.display = 'block';
-    document.getElementById('entityEffects').style.display = 'block';
-    document.getElementById('timeLeftLabel').style.display = 'block';
     hideReadyButton();
     hideStartGameButton();
     startGameLoop();
+    startCountdown();
+    console.log('called again');
 }
 
 function addParametersToUrl({param, value, url}) {
@@ -151,14 +149,25 @@ function winner(text) {
 }
 
 function startCountdown() {
-    let timeLeft = 6;
+    let countDownStartGame = 4;
 
     function countdown() {
-        timeLeft--;
+        countDownStartGame--;
         document.getElementById('gameOver').style.display = 'block';
-        document.getElementById('gameOver').innerText = timeLeft;
-        if (timeLeft <= 0) {
+
+        if (countDownStartGame === 1) {
+            document.getElementById('gameOver').innerText = 'START!';
+        } else {
+            document.getElementById('gameOver').innerText = countDownStartGame;
+        }
+
+        document.getElementById('')
+        if (countDownStartGame <= 0) {
             document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('scoreBoardGroup').style.display = 'block';
+            document.getElementById('scoreLabel').style.display = 'block';
+            document.getElementById('entityEffects').style.display = 'block';
+            document.getElementById('timeLeftLabel').style.display = 'block';
         } else {
             setTimeout(countdown, 1000);
         }

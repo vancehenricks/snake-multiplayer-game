@@ -835,8 +835,7 @@ connection.onmessage = ({data}) => {
             gameTime = gt;
         }
 
-        if(gameStarted) {
-            startCountdown();
+        if(gameStarted && !isCreator()) {
             startGame();
         }
         

@@ -4,8 +4,9 @@ const MAX_TAIL = 50;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
 const DEFAULT_GAME_TIME_MS = 120000;
-const DEFAULT_INVULNERABLE_TIMEOUT_MS = 30000;
+const DEFAULT_INVULNERABLE_TIMEOUT_MS = 34000;
 const RESPAWN_INVULNERABLE_TIMEOUT_MS = 5000;
+const DELAY_START_GAME_MS = 3000;
 const MAX_FOOD = 10;
 const MAX_OBSTACLE = 10;
 const MAP = {
@@ -809,7 +810,7 @@ function startGameLoop(room) {
         room.tickTimeOutId = setTimeout(gameTick, GAME_TICK_MS);
     }
 
-    setTimeout(gameTick, 6000);
+    gameTick();
 }
 
 function stopGameLoop(room) {
@@ -835,7 +836,7 @@ function renderGameStatesToClient(room) {
     getPlayerEntities(room).forEach((entity) => {
         const client = getClient(entity);
 
-        client.send(JSON.stringify({
+        client?.send(JSON.stringify({
                 gameStarted: true, 
                 gameTime: room.gameTime, 
         }));
@@ -932,7 +933,7 @@ app.ws(CHANNEL, (ws, req) => {
             }
 
             if (startGame && refPlayer.id === room.creatorId && !room.gameStarted && readyListMatchesCurrentPlayers(room)) {
-                startGameLoop(room);
+                setTimeout(() => startGameLoop(room), DELAY_START_GAME_MS);
             }
                 
         } catch (err) {
