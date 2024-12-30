@@ -330,11 +330,12 @@ function renderInvulnerableEffect(entity) {
     }
 }
 
+let patternCanvas = document.createElement('canvas');
+let patternCtx = patternCanvas.getContext('2d');
+
 function createDiagonalPattern() {
-    const patternCanvas = document.createElement('canvas');
     patternCanvas.width = 10;
     patternCanvas.height = 10;
-    const patternCtx = patternCanvas.getContext('2d');
 
     patternCtx.strokeStyle = '#d3d3d3';
     patternCtx.lineWidth = 1;
@@ -542,8 +543,12 @@ function updatePlayerList() {
             label = isInReadyList(entity) ? '✅' : '❌';
         }
 
-        if (isEntityPlayer(entity)) {
+        if (isEntityPlayer(entity) && !isEntityCreator) {
             label = isPlayerReady ? '(You)✅' : '(You)❌';
+        }
+
+        if (isEntityPlayer(entity) && isEntityCreator) {
+            label = '(Host)(You)';
         }
         
         addCellToTable(column, entity.name + label);
@@ -741,11 +746,6 @@ function updateGame() {
 }
 
 function isCreator(id = player.id) {
-
-    if (creatorId === id) {
-        console.log(creatorId, id);
-
-    }
     return creatorId === id;
 }
 

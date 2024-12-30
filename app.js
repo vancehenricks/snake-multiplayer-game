@@ -132,7 +132,7 @@ function renderEverythingToClients(room, player) {
             data = { playerId: player.id };
         }
 
-        client?.send(JSON.stringify({...data, entities: room.gameEntities, creatorId: room.creatorId }));
+        client?.send(JSON.stringify({...data, entities: room.gameEntities, creatorId: room.creatorId, readyList: room.readyList}));
     })
 }
 
@@ -901,7 +901,10 @@ app.ws(CHANNEL, (ws, req) => {
 
     createClient(refPlayer, ws);
     addEntityToRoom(room, refPlayer);
-    addEntityToReadyList(room, refPlayer);
+
+    if (room.creatorId === refPlayer.id) {
+        addEntityToReadyList(room, refPlayer);
+    }
     renderEverythingToClients(room, refPlayer);
 
     console.log('Client connected to room:', roomId, 'IP:', req.ip);
