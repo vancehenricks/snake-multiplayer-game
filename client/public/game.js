@@ -29,6 +29,12 @@ const ENTITY_PROPERTIES = [
     'animation', //in client only
 ]
 
+const UI_ELEMENTS = {
+    ANNOUNCEMENT: 'announcement',
+    SCORE: 'score',
+    EFFECTS: 'effects',
+}
+
 const CLOSE_VIOLATION = {
     INVALID_ROOMID_GIVEN: 4000,
     ENTITY_TIMEDOUT : 4001,
@@ -82,12 +88,6 @@ function sendReadyToServer() {
     sendToServer({ready: isPlayerReady});
 }
 
-function createCanvas() {
-    canvas = document.getElementById('gameCanvas');
-    canvas.width = 500;
-    canvas.height = 500;
-}
-
 function updateScore() {
     document.getElementById('score').innerText = player.score;  
 }
@@ -106,24 +106,24 @@ function renderObstacle({id, size, nodes}, isFill) {
 
     const {x, y} = payload || nodes[0];
 
-    ctx.beginPath();
-    ctx.fillStyle = '#f1f1f1';
-    ctx.strokeStyle = '#242424';
-    ctx.lineWidth = 2; 
+    gameCtx.beginPath();
+    gameCtx.fillStyle = '#f1f1f1';
+    gameCtx.strokeStyle = '#242424';
+    gameCtx.lineWidth = 2; 
 
-    ctx.rect(x - size / 2, y - size / 2, size, size);
-    ctx.fill();
-    ctx.stroke();
+    gameCtx.rect(x - size / 2, y - size / 2, size, size);
+    gameCtx.fill();
+    gameCtx.stroke();
 
     if (isFill) {
         const innerSize = size / 2;
-        ctx.beginPath();
-        ctx.fillStyle = '#242424';
-        ctx.strokeStyle = '#f1f1f1';
-        ctx.lineWidth = 2;
-        ctx.rect(x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
-        ctx.fill();
-        ctx.stroke();
+        gameCtx.beginPath();
+        gameCtx.fillStyle = '#242424';
+        gameCtx.strokeStyle = '#f1f1f1';
+        gameCtx.lineWidth = 2;
+        gameCtx.rect(x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
+        gameCtx.fill();
+        gameCtx.stroke();
     }
 
     if(payload) {
@@ -145,13 +145,13 @@ function renderFood({id, size, nodes}) {
 
     const {x, y} = payload || nodes[0];
 
-    ctx.beginPath();
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = '#242424';
-    ctx.arc(x, y, size/2, 0, Math.PI * 2, false);
-    ctx.fillStyle = '#f1f1f1';
-    ctx.stroke();
-    ctx.fill();
+    gameCtx.beginPath();
+    gameCtx.lineWidth = 5;
+    gameCtx.strokeStyle = '#242424';
+    gameCtx.arc(x, y, size/2, 0, Math.PI * 2, false);
+    gameCtx.fillStyle = '#f1f1f1';
+    gameCtx.stroke();
+    gameCtx.fill();
 
     if(payload) {
         if(y > payload.refY-5 && y > payload.refY+5) {
@@ -175,42 +175,42 @@ function renderSnakeHead(entity) {
     const size = payload?.size || entity.size * 2;
     const {x, y} = {x: node.x - 3, y: node.y - 5}
 
-    ctx.beginPath();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
-    ctx.lineCap = 'round';
-    ctx.moveTo(node.x, node.y);
+    gameCtx.beginPath();
+    gameCtx.lineWidth = 2;
+    gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+    gameCtx.lineCap = 'round';
+    gameCtx.moveTo(node.x, node.y);
 
     const diagonalOffset = 7;
     const straightOffset = 10;
 
     if (entity.direction.y === -1 && entity.direction.x === 0) {
-        ctx.lineTo(node.x, node.y+straightOffset);
+        gameCtx.lineTo(node.x, node.y+straightOffset);
     } else if (entity.direction.y === 1 && entity.direction.x === 0) {  
-        ctx.lineTo(node.x, node.y-straightOffset);
+        gameCtx.lineTo(node.x, node.y-straightOffset);
     } else if (entity.direction.x === -1 && entity.direction.y === 0) {
-        ctx.lineTo(node.x+straightOffset, node.y);
+        gameCtx.lineTo(node.x+straightOffset, node.y);
     } else if (entity.direction.x === 1 && entity.direction.y === 0) {
-        ctx.lineTo(node.x-straightOffset, node.y);
+        gameCtx.lineTo(node.x-straightOffset, node.y);
     } else if (entity.direction.x === 1 && entity.direction.y === 1) {
-        ctx.lineTo(node.x-diagonalOffset, node.y-diagonalOffset);
+        gameCtx.lineTo(node.x-diagonalOffset, node.y-diagonalOffset);
     } else if (entity.direction.x === -1 && entity.direction.y === 1) {
-        ctx.lineTo(node.x+diagonalOffset, node.y-diagonalOffset);
+        gameCtx.lineTo(node.x+diagonalOffset, node.y-diagonalOffset);
     } else if (entity.direction.x === 1 && entity.direction.y === -1) {
-        ctx.lineTo(node.x-diagonalOffset, node.y+diagonalOffset);
+        gameCtx.lineTo(node.x-diagonalOffset, node.y+diagonalOffset);
     } else if (entity.direction.x === -1 && entity.direction.y === -1) {
-        ctx.lineTo(node.x+diagonalOffset, node.y+diagonalOffset);
+        gameCtx.lineTo(node.x+diagonalOffset, node.y+diagonalOffset);
     }
     
-    ctx.stroke();
+    gameCtx.stroke();
 
-    ctx.beginPath();
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
-    ctx.arc(x + 3, y + 5, size/3, 0, Math.PI * 2, false);
-    ctx.fillStyle = '#f1f1f1';
-    ctx.stroke();
-    ctx.fill();
+    gameCtx.beginPath();
+    gameCtx.lineWidth = 5;
+    gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+    gameCtx.arc(x + 3, y + 5, size/3, 0, Math.PI * 2, false);
+    gameCtx.fillStyle = '#f1f1f1';
+    gameCtx.stroke();
+    gameCtx.fill();
 
     if(payload) {
         if (entity.animation.eat) {
@@ -237,14 +237,14 @@ function renderLabel({ direction, node, value}) {
     const { x, y } = node;
     const { y: dy } = direction;
 
-    ctx.fillStyle = '#242424';
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
+    gameCtx.fillStyle = '#242424';
+    gameCtx.font = '12px Arial';
+    gameCtx.textAlign = 'center';
 
     if (dy === -1) {
-        ctx.fillText(value, x, y + 28);   
+        gameCtx.fillText(value, x, y + 28);   
     } else {
-        ctx.fillText(value, x, y - 22);
+        gameCtx.fillText(value, x, y - 22);
     }
 }
 
@@ -263,30 +263,30 @@ function renderInvulnerableTimeLeftLabel(entity) {
 function renderSnake(entity) {
     const isPlayer = isEntityPlayer(entity);
 
-    ctx.beginPath();
-    ctx.lineWidth = entity.size;
-    ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
-    ctx.lineCap = 'round';
+    gameCtx.beginPath();
+    gameCtx.lineWidth = entity.size;
+    gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+    gameCtx.lineCap = 'round';
 
     entity.nodes.forEach((node, index) => {
         if (index === 0) {
-            ctx.moveTo(node.x, node.y);
+            gameCtx.moveTo(node.x, node.y);
         } else {
-            ctx.lineTo(node.x, node.y);
+            gameCtx.lineTo(node.x, node.y);
         }
     });
 
-    ctx.stroke();
+    gameCtx.stroke();
 
     const nodesLeft = entity.nodes.slice(-1);
     nodesLeft.forEach((node) => {
-        ctx.beginPath();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
-        ctx.arc(node.x, node.y, entity.size / 2, 0, Math.PI * 2, false);
-        ctx.fillStyle = '#f1f1f1';
-        ctx.fill();
-        ctx.stroke();
+        gameCtx.beginPath();
+        gameCtx.lineWidth = 2;
+        gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+        gameCtx.arc(node.x, node.y, entity.size / 2, 0, Math.PI * 2, false);
+        gameCtx.fillStyle = '#f1f1f1';
+        gameCtx.fill();
+        gameCtx.stroke();
     });
 }
 
@@ -299,7 +299,8 @@ function renderPlayer() {
 }
 
 function clearCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    uiCtx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+    gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 }
 
 function renderInvulnerableEffect(entity) {
@@ -312,11 +313,11 @@ function renderInvulnerableEffect(entity) {
 
     const endAngle = payload?.value || 0;
 
-    ctx.beginPath();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = isPlayer ? '#66023c' : '#242424';
-    ctx.arc(x, y, size+endAngle, 5-endAngle, endAngle, false);
-    ctx.stroke();
+    gameCtx.beginPath();
+    gameCtx.lineWidth = 1;
+    gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+    gameCtx.arc(x, y, size+endAngle, 5-endAngle, endAngle, false);
+    gameCtx.stroke();
 
 
     if(payload) {
@@ -330,10 +331,25 @@ function renderInvulnerableEffect(entity) {
     }
 }
 
-let patternCanvas = document.createElement('canvas');
-let patternCtx = patternCanvas.getContext('2d');
+function createUICanvas() {
+    const uiCanvas = document.getElementById('gameCanvas');
+    uiCanvas.width = 700;
+    uiCanvas.height = 700;
+    return uiCanvas;
+}
+
+function createGameCanvas() {
+    const gameCanvas = document.createElement('canvas');
+    gameCanvas.width = 600;
+    gameCanvas.height = 600;
+    return gameCanvas;
+}
+
 
 function createDiagonalPattern() {
+    const patternCanvas = document.createElement('canvas');
+    const patternCtx = patternCanvas.getContext('2d');
+    
     patternCanvas.width = 10;
     patternCanvas.height = 10;
 
@@ -344,30 +360,28 @@ function createDiagonalPattern() {
     patternCtx.lineTo(10, 10);
     patternCtx.stroke();
 
-    return ctx.createPattern(patternCanvas, 'repeat');
+    return gameCtx.createPattern(patternCanvas, 'repeat');
 }
 
 function renderSpawnArea() {
     const squareSize = 50;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
+    const centerX = gameCanvas.width / 2;
+    const centerY = gameCanvas.height / 2;
 
 
 
     const pattern = createDiagonalPattern();
 
-    ctx.beginPath();
-    ctx.strokeStyle = '#d3d3d3';
-    ctx.fillStyle = pattern;
-    ctx.lineWidth = 1;
-    ctx.rect(centerX - squareSize / 2, centerY - squareSize / 2, squareSize, squareSize);
-    ctx.fill();
-    ctx.stroke();
+    gameCtx.beginPath();
+    gameCtx.strokeStyle = '#d3d3d3';
+    gameCtx.fillStyle = pattern;
+    gameCtx.lineWidth = 1;
+    gameCtx.rect(centerX - squareSize / 2, centerY - squareSize / 2, squareSize, squareSize);
+    gameCtx.fill();
+    gameCtx.stroke();
 }
 
 function renderEntities() {
-    clearCanvas();
-    renderSpawnArea();
     [...gameEntities].forEach((entity) => {
         if(entity.id === player.id) return;
         if(entity.type === TYPE.FOOD) {
@@ -449,14 +463,106 @@ function playerControl() {
     }
 }
 
+
+function renderAnnouncement(text) {
+    addUIElement({id: UI_ELEMENTS.ANNOUNCEMENT, render: () => { 
+        const lines = text.split('\n');
+        const lineHeight = 28;
+        uiCtx.textAlign = 'center';
+
+        lines.forEach((line, index) => {
+            if (index === 0) {
+                uiCtx.font = '30px Arial';
+                uiCtx.fontWeight = 'bold';
+                uiCtx.fillStyle = '#242424';        
+                uiCtx.fillText(line, uiCanvas.width / 2, uiCanvas.height / 2);
+                return;
+            }
+
+            uiCtx.font = '20px Arial';
+            uiCtx.fontWeight = 'bold';
+            uiCtx.fillStyle = '#242424';    
+            uiCtx.fillText(line, uiCanvas.width / 2, uiCanvas.height / 2 + index * lineHeight);
+        });
+    }});
+}
+
+function updateUIScore() {
+    addUIElement({id: UI_ELEMENTS.SCORE, render: () => {
+        const topMargin = 30;
+        const leftMargin = 10;
+        uiCtx.textAlign = 'left';
+        uiCtx.font = '24px Arial';
+        uiCtx.fontWeight = 'bold';
+        uiCtx.fillStyle = '#242424';
+        uiCtx.fillText(`🏆 ${player.score}`, leftMargin, topMargin);
+    }});
+}
+
+function updateUIGameTimeLeft() {
+    if (gameTime === null) return;
+
+    addUIElement({id: UI_ELEMENTS.TIMELEFT, render: () => {
+        const topMargin = 30;
+        uiCtx.textAlign = 'center';
+        uiCtx.font = '24px Arial';
+        uiCtx.fontWeight = 'bold';
+        uiCtx.fillStyle = '#242424';
+        uiCtx.fillText(`⏱️ ${convertToCountdown(gameTime)}`, uiCanvas.width / 2, topMargin);
+    }});
+}
+
+function updateUIEffects() {
+    addUIElement({id: UI_ELEMENTS.EFFECTS, render: () => {
+        const topMargin = 30;
+        const rightMargin = 10;
+        uiCtx.textAlign = 'right';
+        uiCtx.font = '24px Arial';
+        uiCtx.fontWeight = 'bold';
+        uiCtx.fillStyle = '#242424';
+
+        const invulnerableTimeleft = convertToCountdown(player.invulnerable);
+
+        if (!isInvulnerableTimedOut(player)) {
+            uiCtx.fillText(`🛡️ ${invulnerableTimeleft}`, uiCanvas.width - rightMargin, topMargin);
+        } else {
+            removeUIElement({id: UI_ELEMENTS.EFFECTS});
+        }
+    }});
+}
+
+function renderCountdown() {
+    let countDownStartGame = 4;
+
+    function countdown() {
+        countDownStartGame--;
+
+        if (countDownStartGame === 0) {
+            renderAnnouncement('START');
+        } else {
+            renderAnnouncement(countDownStartGame+'');
+        }
+
+        if (countDownStartGame < 0) { 
+            removeUIElement({id: UI_ELEMENTS.ANNOUNCEMENT});
+        } else {
+            setTimeout(countdown, 1000);
+        }
+    }
+
+    countdown();
+}
+
 function displayGameOver() {
     stopGameLoop();
     gameOver();
+    renderAnnouncement('Game Over');
 }
 
 function displayWinner() {
-    displayGameOver();
-    winner(scoreBoard[0].name);
+    stopGameLoop();
+    gameOver();
+    renderAnnouncement(`🏆\n${scoreBoard[0].name}`);
 }
 
 function isInvulnerableTimedOut(entity) {
@@ -486,19 +592,9 @@ function convertToCountdown({ timeout, maxMs }) {
 
     if (remainingMinutes > 0) {
         const seconds = remainingSeconds % 60;
-        return `${remainingMinutes}m ${seconds}s`;
+        return `${remainingMinutes}:${seconds}`;
     } else {
-        return `${remainingSeconds}s`;
-    }
-}
-
-function updateVulnerableEffect() {
-    const invulnerableTimeleft = convertToCountdown(player.invulnerable);
-
-    if(!isInvulnerableTimedOut(player)) {
-        document.getElementById('invulnerable').innerText = 'Shield 🛡️: ' + invulnerableTimeleft;
-    } else {
-        document.getElementById('invulnerable').innerText = '';
+        return `${remainingSeconds}`;
     }
 }
 
@@ -514,10 +610,15 @@ function updateScoreBoard() {
     const column = document.createElement('ol');
     scoreBoard.forEach((scoreEntry, index) => {
         if (index === 0) {
-            addCellToTable(column, scoreEntry.name + ' 👑: ' + scoreEntry.score);
-            return;
+            addCellToTable(column, scoreEntry.name + ' 🥇: ' + scoreEntry.score);
+        } else if (index === 1) {
+            addCellToTable(column, scoreEntry.name + ' 🥈: ' + scoreEntry.score);
+        } else if (index === 2) {
+            addCellToTable(column, scoreEntry.name + ' 🥉: ' + scoreEntry.score);
+        } else {
+            addCellToTable(column, scoreEntry.name + ': ' + scoreEntry.score);
+
         }
-        addCellToTable(column, scoreEntry.name + ': ' + scoreEntry.score);
     });
     scoreBoardTable.appendChild(column);
 }
@@ -723,26 +824,69 @@ function removeDeadEntities() {
     gameEntities = [...gameEntities].filter(gameEntity => gameEntity.status === STATUS.ALIVE)
 }
 
-function updateGameTime() {
-    if (gameTime === null) return;
-    document.getElementById('timeLeftValue').innerText = convertToCountdown(gameTime);
+function renderWall() {
+    const spikeLength = 5;
+    const spikeSpacing = 15;
+
+    gameCtx.strokeStyle = '#d3d3d3';
+    gameCtx.lineWidth = 2;
+
+    for (let x = 0; x < gameCanvas.width - spikeLength; x += spikeSpacing) {
+        gameCtx.beginPath();
+        gameCtx.moveTo(x, 0);
+        gameCtx.lineTo(x + spikeLength / 2, spikeLength);
+        gameCtx.lineTo(x + spikeLength, 0);
+        gameCtx.stroke();
+    }
+
+    for (let x = 0; x < gameCanvas.width - spikeLength; x += spikeSpacing) {
+        gameCtx.beginPath();
+        gameCtx.moveTo(x, gameCanvas.height);
+        gameCtx.lineTo(x + spikeLength / 2, gameCanvas.height - spikeLength);
+        gameCtx.lineTo(x + spikeLength, gameCanvas.height);
+        gameCtx.stroke();
+    }
+
+    for (let y = 0; y < gameCanvas.height - spikeLength; y += spikeSpacing) {
+        gameCtx.beginPath();
+        gameCtx.moveTo(0, y);
+        gameCtx.lineTo(spikeLength, y + spikeLength / 2);
+        gameCtx.lineTo(0, y + spikeLength);
+        gameCtx.stroke();
+    }
+
+    for (let y = 0; y < gameCanvas.height - spikeLength; y += spikeSpacing) {
+        gameCtx.beginPath();
+        gameCtx.moveTo(gameCanvas.width, y);
+        gameCtx.lineTo(gameCanvas.width - spikeLength, y + spikeLength / 2);
+        gameCtx.lineTo(gameCanvas.width, y + spikeLength);
+        gameCtx.stroke();
+    }
 }
 
 function updateGame() {
+    clearCanvas();
+    renderWall();
+    renderSpawnArea();
     if (!startGameUpdate) {
         updatePlayerList();
         removeDeadEntities();
+        renderUI();
         return;
     };
     
-    updateScore();
+    updateScore(); //to remove once migrated to UI
+    updateUIScore();
     updateScoreBoard();
     playerControl();
     renderEntities();
     movePlayerEntities();
-    updateVulnerableEffect();
-    updateGameTime();
+
+    updateUIEffects();
+    updateUIGameTimeLeft();
     removeDeadEntities();
+    renderGameCanvasToUICanvas();
+    renderUI();
 }
 
 function isCreator(id = player.id) {
@@ -780,10 +924,36 @@ function readyListMatchesCurrentPlayers() {
     return players.length === readyList.length;
 }
 
+function addUIElement(element) {
+    if (ui.some(uiElement => uiElement.id === element.id)) {
+        removeUIElement(element);
+    }
+    ui = [...ui, element];
+}
+
+function removeUIElement(element) {
+    ui = [...ui].filter(uiElement => uiElement.id !== element.id);
+}
+
+function renderUI () {
+    ui.forEach(({render}) => {
+        render();
+    });
+}
+
+function renderGameCanvasToUICanvas () {
+    const centerX = (uiCanvas.width - gameCanvas.width) / 2;
+    const centerY = (uiCanvas.height - gameCanvas.height) / 2;
+    uiCtx.drawImage(gameCanvas, centerX, centerY);
+
+}
 
 establishConnection();
-createCanvas();
-let ctx = canvas.getContext('2d');
+let gameCanvas = createGameCanvas();
+let uiCanvas = createUICanvas();
+let gameCtx = gameCanvas.getContext('2d');
+let uiCtx = uiCanvas.getContext('2d');
+let ui = [];
 let player = {};
 let gameEntities = [];
 let previousDirection = [];
@@ -838,7 +1008,6 @@ connection.onmessage = ({data}) => {
         if(gameStarted && !isCreator()) {
             startGame();
         }
-        
         
         if (entities) {
             let convertedEntities = convertEntities1DArrayToNodes(entities);

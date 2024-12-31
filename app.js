@@ -10,8 +10,8 @@ const DELAY_START_GAME_MS = 3000;
 const MAX_FOOD = 10;
 const MAX_OBSTACLE = 10;
 const MAP = {
-    WIDTH: 500,
-    HEIGHT: 500
+    WIDTH: 600,
+    HEIGHT: 600
 
 }
 const TYPE = {
@@ -100,7 +100,7 @@ function renderTouchedEntitiesToClient(room) {
                 data = {...data, scoreBoard: room.scoreBoard};
             }
 
-            client.send(JSON.stringify(data));
+            client?.send(JSON.stringify(data));
         })
     }
 }
@@ -460,7 +460,7 @@ function stopWhenOutOfBounds(entity) {
     if(x < offset || x > MAP.WIDTH-offset || y < offset || y > MAP.HEIGHT-offset) {
 
         if(entity.type === TYPE.PLAYER) {
-            console.log(`Player ${entity.name} killed by world border`);
+            //console.log(`Player ${entity.name} killed by world border`);
             return respawnEntity(entity);
         }
 
@@ -551,7 +551,7 @@ function intersectPlayerToPlayer({entity, gameEntity, hits}) {
      gameEntity.type !== TYPE.PLAYER) return entity;
 
     if(hasHitTailNode2(hits) || hasHitHeadNode(hits)) {
-        console.log(`Player ${entity.name} killed by player ${gameEntity.name}`);
+        //console.log(`Player ${entity.name} killed by player ${gameEntity.name}`);
         return respawnEntity(entity);
     }
 
@@ -583,7 +583,7 @@ function intersectPlayerToObstacle({entity, gameEntity, hits}) {
     if(entity.type === TYPE.PLAYER && gameEntity.type === TYPE.OBSTACLE && hasHitHeadNode(hits)) {
 
         if (isInvulnerableTimedOut(entity)) {
-            console.log(`Player ${entity.name} killed by obstacle`);
+            //console.log(`Player ${entity.name} killed by obstacle`);
             return respawnEntity(entity);
         }
         
@@ -608,7 +608,7 @@ function intersectSelf({entity, gameEntity, hits}) {
         gameEntity.type !== TYPE.PLAYER) return entity;
 
     if(hasHitTailNode2(hits)) {
-        console.log(`Player ${entity.name} killed by its own tail`);
+        //console.log(`Player ${entity.name} killed by its own tail`);
         return respawnEntity(entity);
     }
 
