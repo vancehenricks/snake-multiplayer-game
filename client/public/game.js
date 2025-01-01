@@ -177,9 +177,19 @@ function renderSnakeHead(entity) {
     const size = payload?.size || entity.size * 2;
     const {x, y} = {x: node.x - 3, y: node.y - 5}
 
+    const currentPlace = scoreBoard.findIndex((scoreEntry) => scoreEntry.id === entity.id);
+
+    let playerColor = '#66023c';
+    let otherColor = '#242424';
+
+    if (currentPlace === 0) {
+        playerColor = '#ffbf00';
+        otherColor = '#ffbf00';
+    }
+
     gameCtx.beginPath();
     gameCtx.lineWidth = 2;
-    gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+    gameCtx.strokeStyle = isPlayer ? playerColor : otherColor;
     gameCtx.lineCap = 'round';
     gameCtx.moveTo(node.x, node.y);
 
@@ -208,7 +218,7 @@ function renderSnakeHead(entity) {
 
     gameCtx.beginPath();
     gameCtx.lineWidth = 5;
-    gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+    gameCtx.strokeStyle = isPlayer ? playerColor : otherColor;
     gameCtx.arc(x + 3, y + 5, size/3, 0, Math.PI * 2, false);
     gameCtx.fillStyle = '#f1f1f1';
     gameCtx.stroke();
@@ -257,9 +267,19 @@ function renderName(entity) {
 function renderSnake(entity) {
     const isPlayer = isEntityPlayer(entity);
 
+    const currentPlace = scoreBoard.findIndex((scoreEntry) => scoreEntry.id === entity.id);
+
+    let playerColor = '#66023c';
+    let otherColor = '#242424';
+
+    if (currentPlace === 0) {
+        playerColor = '#ffbf00';
+        otherColor = '#ffbf00';
+    }
+
     gameCtx.beginPath();
     gameCtx.lineWidth = entity.size;
-    gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+    gameCtx.strokeStyle = isPlayer ? playerColor : otherColor;
     gameCtx.lineCap = 'round';
 
     entity.nodes.forEach((node, index) => {
@@ -276,7 +296,7 @@ function renderSnake(entity) {
     nodesLeft.forEach((node) => {
         gameCtx.beginPath();
         gameCtx.lineWidth = 2;
-        gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+        gameCtx.strokeStyle = isPlayer ? playerColor : otherColor;
         gameCtx.arc(node.x, node.y, entity.size / 2, 0, Math.PI * 2, false);
         gameCtx.fillStyle = '#f1f1f1';
         gameCtx.fill();
@@ -303,12 +323,23 @@ function renderInvulnerableEffect(entity) {
     const isPlayer = isEntityPlayer(entity);
     const secondsLeft = convertToSeconds(getRemainingTimeMs(entity.invulnerable));
 
+    const currentPlace = scoreBoard.findIndex((scoreEntry) => scoreEntry.id === entity.id);
+
+    let playerColor = '#66023c';
+    let otherColor = '#242424';
+
+    if (currentPlace === 0) {
+        playerColor = '#ffbf00';
+        otherColor = '#ffbf00';
+    }
+
+
     if(isInvulnerableTimedOut(entity)) return;
 
     const endAngle = payload?.value || 0;
     gameCtx.beginPath();
     gameCtx.lineWidth = 1;
-    gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+    gameCtx.strokeStyle = isPlayer ? playerColor : otherColor;
     if (secondsLeft < 10) {
         gameCtx.setLineDash([5, 3]);
     } else {
