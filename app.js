@@ -946,7 +946,7 @@ app.ws(CHANNEL, (ws, req) => {
 
     let room = getRoom(roomId);
 
-    if (playerEntitiesCount(room) >= MAX_PLAYERS_PER_ROOM) {
+    if (room && playerEntitiesCount(room) >= MAX_PLAYERS_PER_ROOM) {
         console.log('Room is full:', roomId);
         ws.close(4005, 'Room is full');
         return
