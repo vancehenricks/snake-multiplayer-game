@@ -3,20 +3,19 @@ const CLIENT_TICK_MS = 50;
 const ANIMATION_TICK_MS = 33;
 const CHANNEL = '/game';
 const TYPE = {
-    PLAYER: 'player',
-    FOOD: 'food',
-    OBSTACLE: 'obstacle',
+    PLAYER: 0,
+    FOOD: 1,
+    OBSTACLE: 2,
 }
 
 const STATUS = {
-    ALIVE: 'alive',
-    DEAD: 'dead'
+    ALIVE: 0,
+    DEAD: 1
 }
 
 const ENTITY_PROPERTIES = [
     'type',
     'id',
-    'position',
     'name',
     'size',
     'score',
@@ -40,7 +39,8 @@ const CLOSE_VIOLATION = {
     ENTITY_TIMEDOUT : 4001,
     INVALID_PLAYER_NAME_GIVEN: 4002,
     GAME_ALREADY_STARTED: 4003,
-    GAME_TIMEDOUT: 4004
+    GAME_TIMEDOUT: 4004,
+    ROOM_FULL: 4005,
 }
 
 function establishConnection() {
@@ -172,24 +172,13 @@ function renderSnakeHead(entity) {
     const node = entity.nodes[0];
     const animationId = createAnimationId(entity.id, 'eat');
     const payload = getAnimationFramePayload(animationId);
-    const isPlayer = isEntityPlayer(entity);
-
     const size = payload?.size || entity.size * 2;
     const {x, y} = {x: node.x - 3, y: node.y - 5}
-
-    const currentPlace = scoreBoard.findIndex((scoreEntry) => scoreEntry.id === entity.id);
-
-    let playerColor = '#66023c';
-    let otherColor = '#242424';
-
-    if (currentPlace === 0) {
-        playerColor = '#ffbf00';
-        otherColor = '#ffbf00';
-    }
+    const snakeColor = getSnakeColor(entity);
 
     gameCtx.beginPath();
     gameCtx.lineWidth = 2;
-    gameCtx.strokeStyle = isPlayer ? playerColor : otherColor;
+    gameCtx.strokeStyle = snakeColor;
     gameCtx.lineCap = 'round';
     gameCtx.moveTo(node.x, node.y);
 
@@ -218,7 +207,7 @@ function renderSnakeHead(entity) {
 
     gameCtx.beginPath();
     gameCtx.lineWidth = 5;
-    gameCtx.strokeStyle = isPlayer ? playerColor : otherColor;
+    gameCtx.strokeStyle = snakeColor;
     gameCtx.arc(x + 3, y + 5, size/3, 0, Math.PI * 2, false);
     gameCtx.fillStyle = '#f1f1f1';
     gameCtx.stroke();
@@ -265,21 +254,11 @@ function renderName(entity) {
 }
 
 function renderSnake(entity) {
-    const isPlayer = isEntityPlayer(entity);
-
-    const currentPlace = scoreBoard.findIndex((scoreEntry) => scoreEntry.id === entity.id);
-
-    let playerColor = '#66023c';
-    let otherColor = '#242424';
-
-    if (currentPlace === 0) {
-        playerColor = '#ffbf00';
-        otherColor = '#ffbf00';
-    }
+    const snakeColor = getSnakeColor(entity);
 
     gameCtx.beginPath();
     gameCtx.lineWidth = entity.size;
-    gameCtx.strokeStyle = isPlayer ? playerColor : otherColor;
+    gameCtx.strokeStyle = snakeColor;
     gameCtx.lineCap = 'round';
 
     entity.nodes.forEach((node, index) => {
@@ -296,7 +275,7 @@ function renderSnake(entity) {
     nodesLeft.forEach((node) => {
         gameCtx.beginPath();
         gameCtx.lineWidth = 2;
-        gameCtx.strokeStyle = isPlayer ? playerColor : otherColor;
+        gameCtx.strokeStyle = snakeColor;
         gameCtx.arc(node.x, node.y, entity.size / 2, 0, Math.PI * 2, false);
         gameCtx.fillStyle = '#f1f1f1';
         gameCtx.fill();
@@ -316,30 +295,35 @@ function clearCanvas() {
     gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 }
 
-function renderInvulnerableEffect(entity) {
-    const payload = getAnimationFramePayload(entity.id);
-    const {nodes, size} = entity;
-    const {x, y} = nodes[0];
-    const isPlayer = isEntityPlayer(entity);
-    const secondsLeft = convertToSeconds(getRemainingTimeMs(entity.invulnerable));
-
+function getSnakeColor(entity) {
     const currentPlace = scoreBoard.findIndex((scoreEntry) => scoreEntry.id === entity.id);
-
-    let playerColor = '#66023c';
-    let otherColor = '#242424';
+    const isPlayer = isEntityPlayer(entity);
 
     if (currentPlace === 0) {
-        playerColor = '#ffbf00';
-        otherColor = '#ffbf00';
+        return '#ffbf00';
+    } else {
+        if (isPlayer) {
+            return '#66023c'
+        } else {
+            return '#242424';
+        }
     }
+}
 
+function renderInvulnerableEffect(entity) {
+    const animationId = createAnimationId(entity.id, 'invulnerable');
+    const payload = getAnimationFramePayload(animationId);
+    const {nodes, size} = entity;
+    const {x, y} = nodes[0];
+    const secondsLeft = convertToSeconds(getRemainingTimeMs(entity.invulnerable));
+    const snakeColor = getSnakeColor(entity);
 
     if(isInvulnerableTimedOut(entity)) return;
 
     const endAngle = payload?.value || 0;
     gameCtx.beginPath();
     gameCtx.lineWidth = 1;
-    gameCtx.strokeStyle = isPlayer ? playerColor : otherColor;
+    gameCtx.strokeStyle = snakeColor;
     if (secondsLeft < 10) {
         gameCtx.setLineDash([5, 3]);
     } else {
@@ -353,12 +337,12 @@ function renderInvulnerableEffect(entity) {
 
     if(payload) {
         if (endAngle <= payload.expected) {
-        nextAnimationFrame(entity.id, {...payload, value: endAngle+0.5});
+        nextAnimationFrame(animationId, {...payload, value: endAngle+0.5});
         } else {
-            nextAnimationFrame(entity.id, {...payload, value: 0, expected: Math.PI*2});
+            nextAnimationFrame(animationId, {...payload, value: 0, expected: Math.PI*2});
         }
     } else {
-        nextAnimationFrame(entity.id, { intial: 0, value: 0, expected: Math.PI*2});
+        nextAnimationFrame(animationId, { intial: 0, value: 0, expected: Math.PI*2});
     }
 }
 
@@ -1012,6 +996,14 @@ connection.onclose = ({code}) => {
     }
     else if (code === CLOSE_VIOLATION.GAME_TIMEDOUT) {
         displayWinner();
+    }
+    else if (code === CLOSE_VIOLATION.INVALID_PLAYER_NAME_GIVEN) {
+        alert('Invalid player name given');
+        returnToMenu();
+    }
+    else if (code === CLOSE_VIOLATION.ROOM_FULL) {
+        alert('Room is full');
+        returnToMenu();
     }
 }
 

@@ -1,6 +1,7 @@
 const GAME_TICK_MS = 50;
 const DEFAULT_ENTITY_SIZE = 5;
 const MAX_TAIL = 50;
+const MAX_PLAYERS_PER_ROOM = 12;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
 const DEFAULT_GAME_TIME_MS = 120000;
@@ -9,21 +10,68 @@ const RESPAWN_INVULNERABLE_TIMEOUT_MS = 5000;
 const DELAY_START_GAME_MS = 3000;
 const MAX_FOOD = 10;
 const MAX_OBSTACLE = 10;
+const MAX_UNSIGNED_16_BIT = 65535;
 const MAP = {
     WIDTH: 600,
     HEIGHT: 600
 
 }
 const TYPE = {
-    PLAYER: 'player',
-    FOOD: 'food',
-    OBSTACLE: 'obstacle'
+    PLAYER: 0,
+    FOOD: 1,
+    OBSTACLE: 2
 }
 
 const STATUS = {
-    ALIVE: 'alive',
-    DEAD: 'dead'
+    ALIVE: 0,
+    DEAD: 1
 }
+
+const PAYLOAD_INDEX = {
+    TYPE : 0,
+    ID: 1,
+    NAME: 2,
+    SIZE: 3,
+    SCORE: 4,
+    TAIL: 5,
+    DIRECTION: 8,
+    INVULNERABLE: 10,
+    TIMEOUT: 11,
+    STATUS: 12,
+    NODES: 13,
+    SCORE_BOARD: 13+MAX_TAIL,
+    END: 13+MAX_TAIL+MAX_PLAYERS_PER_ROOM,
+}
+
+
+const PAYLOAD_PROPERTIES = {
+    TYPE: 'type',
+    ID: 'id',
+    NAME: 'name',
+    SIZE: 'size',
+    SCORE: 'score',
+    TAIL: 'tail',
+    DIRECTION: 'direction',
+    INVULNERABLE: 'invulnerable',
+    TIMEOUT: 'timeout',
+    STATUS: 'status',
+    NODES: 'nodes',
+    SCORE_BOARD: 'scoreBoard',
+}
+
+const SCORE_ID = {
+    ID: 0,
+    NAME: 1,
+    SCORE: 2,
+    DATE: 3,
+}
+
+const SCORE_PROPERTIES = [
+    'id',
+    'name',
+    'score',
+    'date',
+]
 
 const CHANNEL = '/game';
 
@@ -52,11 +100,16 @@ function convertNodesTo1DArray(nodes) {
     return nodes.map(node => [node.x, node.y]).flat();
 }
 
+function convertObjectTo1DArray(obj) {
+    return Object.values(obj).flat();
+}
+
+
 function generateEntityProperties(entity) {
     let updatedEntity = {};
     Object.keys(entity.touched).forEach((property) => {
 
-        if (property === 'nodes') {
+        if (property === PAYLOAD_PROPERTIES.NODES) {
             updatedEntity = {
                 ...updatedEntity,
                 nodes: convertNodesTo1DArray(entity.nodes)
@@ -221,8 +274,15 @@ function updateEntityTimeOut(entity) {
     return {...entity, timeout: Date.now()};
 }
 
+let count = 0;
+
 function generateId() {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    if (count > MAX_UNSIGNED_16_BIT) {
+        count = 0;
+    } else {
+        count += 1;
+    }
+    return count;
 }
 
 function generateRandomPosition() {
@@ -885,6 +945,13 @@ app.ws(CHANNEL, (ws, req) => {
     }
 
     let room = getRoom(roomId);
+
+    if (playerEntitiesCount(room) >= MAX_PLAYERS_PER_ROOM) {
+        console.log('Room is full:', roomId);
+        ws.close(4005, 'Room is full');
+        return
+    }
+
     const refPlayer = createEntity({
         name: playerName,
         position: getCenterPosition(),
