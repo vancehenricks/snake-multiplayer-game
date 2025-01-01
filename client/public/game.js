@@ -16,6 +16,7 @@ const STATUS = {
 const ENTITY_PROPERTIES = [
     'type',
     'id',
+    'position', //TODO: this is not used anywhere could make some change to this
     'name',
     'size',
     'score',
