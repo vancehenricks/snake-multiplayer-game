@@ -1,6 +1,5 @@
 const DEFAULT_IDLE_SPEED = 5;
 const CLIENT_TICK_MS = 50;
-const ANIMATION_TICK_MS = 33;
 const CHANNEL = '/game';
 const TYPE = {
     PLAYER: 0,
@@ -12,22 +11,6 @@ const STATUS = {
     ALIVE: 0,
     DEAD: 1
 }
-
-const ENTITY_PROPERTIES = [
-    'type',
-    'id',
-    'position', //TODO: this is not used anywhere could make some change to this
-    'name',
-    'size',
-    'score',
-    'tail',
-    'direction',
-    'invulnerable',
-    'timeout',
-    'status',
-    'nodes',
-    'animation', //in client only
-]
 
 const UI_ELEMENTS = {
     ANNOUNCEMENT: 'announcement',
@@ -692,7 +675,7 @@ function getRoomId() {
 
 function cleanupStaleAnimations() {
     gameAnimation = [...gameAnimation].filter((animation) => {
-        return [...gameEntities].find((entity) => entity.id === getEntityIdFromAnimationId(animation.id));
+        return [...gameEntities].some((entity) => entity.id == getEntityIdFromAnimationId(animation.id));
     });
 }
 
@@ -702,6 +685,7 @@ function removeAnimation(id) {
 
 function nextAnimationFrame(id, payload) {
     const removeExistingAnimation = removeAnimation(id);
+
     gameAnimation = [...removeExistingAnimation, createAnimationFrame({id, payload})];
 }
 
@@ -773,6 +757,22 @@ function movePlayerEntities() {
 }
 
 function hasCompleteProperties(entity) {
+    const ENTITY_PROPERTIES = [
+        'type',
+        'id',
+        'position', //TODO: this is not used anywhere could make some change to this
+        'name',
+        'size',
+        'score',
+        'tail',
+        'direction',
+        'invulnerable',
+        'timeout',
+        'status',
+        'nodes',
+        'animation', //in client only
+    ]
+
     let hits = 0;
     ENTITY_PROPERTIES.forEach(property => {
         Object.keys(entity).forEach(key => {
@@ -889,6 +889,7 @@ function renderWall() {
 }
 
 function updateGame() {
+    cleanupStaleAnimations();
     clearCanvas();
     renderWall();
     renderSpawnArea();
@@ -1073,11 +1074,6 @@ document.addEventListener('keydown', function(event) {
 document.addEventListener('keyup', function(event) {
     keys[event.key] = false;
 });
-
-setTimeout(function run() {
-    cleanupStaleAnimations();
-    setTimeout(run, ANIMATION_TICK_MS);
-}, ANIMATION_TICK_MS);
 
 setTimeout(function run() {
     updateGame();
