@@ -80,7 +80,9 @@ function sendPlayerDirectionToServer(entity) {
 }
 
 function sendStartGameToServer() {
-    sendToServer({startGame: true});
+    if (isCreator()) {
+        sendToServer({startGame: true});
+    }
 }
 
 function sendReadyToServer() {
@@ -252,14 +254,6 @@ function renderName(entity) {
     renderLabel({direction: entity.direction, node: entity.nodes[0], value: entity.name});
 }
 
-function renderInvulnerableTimeLeftLabel(entity) {
-    const secondsLeft = convertToSeconds(getRemainingTime(entity.invulnerable));
-
-    if (secondsLeft < 10 && secondsLeft > 0) {
-        renderLabel({direction: entity.direction, node: entity.nodes[0], value: secondsLeft});
-    }
-}
-
 function renderSnake(entity) {
     const isPlayer = isEntityPlayer(entity);
 
@@ -292,10 +286,9 @@ function renderSnake(entity) {
 
 
 function renderPlayer() {
-    renderSnake(player);;
+    renderSnake(player);
     renderSnakeHead(player);
     renderInvulnerableEffect(player);
-    renderInvulnerableTimeLeftLabel(player);
 }
 
 function clearCanvas() {
@@ -308,16 +301,23 @@ function renderInvulnerableEffect(entity) {
     const {nodes, size} = entity;
     const {x, y} = nodes[0];
     const isPlayer = isEntityPlayer(entity);
+    const secondsLeft = convertToSeconds(getRemainingTimeMs(entity.invulnerable));
 
     if(isInvulnerableTimedOut(entity)) return;
 
     const endAngle = payload?.value || 0;
-
     gameCtx.beginPath();
     gameCtx.lineWidth = 1;
     gameCtx.strokeStyle = isPlayer ? '#66023c' : '#242424';
+    if (secondsLeft < 10) {
+        gameCtx.setLineDash([5, 3]);
+    } else {
+        gameCtx.setLineDash([]);
+    }
     gameCtx.arc(x, y, size+endAngle, 5-endAngle, endAngle, false);
+
     gameCtx.stroke();
+    gameCtx.setLineDash([]); //reset line dash some entities might have expect default
 
 
     if(payload) {
@@ -545,6 +545,7 @@ function renderCountdown() {
 
         if (countDownStartGame < 0) { 
             removeUIElement({id: UI_ELEMENTS.ANNOUNCEMENT});
+            startGameLoop();
         } else {
             setTimeout(countdown, 1000);
         }
@@ -553,14 +554,21 @@ function renderCountdown() {
     countdown();
 }
 
+function removeAllUIElement() {
+    ui = [];
+}
+
+
 function displayGameOver() {
     stopGameLoop();
+    removeAllUIElement();
     gameOver();
     renderAnnouncement('Game Over');
 }
 
 function displayWinner() {
     stopGameLoop();
+    removeAllUIElement();
     gameOver();
     renderAnnouncement(`🏆\n${scoreBoard[0].name}`);
 }
@@ -581,7 +589,7 @@ function convertToMinutes(ms) {
     return Math.floor(ms / 60);
 }
 
-function getRemainingTime({ timeout, maxMs }) {
+function getRemainingTimeMs({ timeout, maxMs }) {
     return  maxMs - (Date.now() - timeout);
 }
 
@@ -610,13 +618,13 @@ function updateScoreBoard() {
     const column = document.createElement('ol');
     scoreBoard.forEach((scoreEntry, index) => {
         if (index === 0) {
-            addCellToTable(column, scoreEntry.name + ' 🥇: ' + scoreEntry.score);
+            addCellToTable(column, '🥇 ' + scoreEntry.name + ': ' + scoreEntry.score);
         } else if (index === 1) {
-            addCellToTable(column, scoreEntry.name + ' 🥈: ' + scoreEntry.score);
+            addCellToTable(column, '🥈 ' + scoreEntry.name + ': ' + scoreEntry.score);
         } else if (index === 2) {
-            addCellToTable(column, scoreEntry.name + ' 🥉: ' + scoreEntry.score);
+            addCellToTable(column, '🥉 ' + scoreEntry.name + ': ' + scoreEntry.score);
         } else {
-            addCellToTable(column, scoreEntry.name + ': ' + scoreEntry.score);
+            addCellToTable(column, scoreEntry.name + ' : ' + scoreEntry.score);
 
         }
     });
@@ -893,15 +901,12 @@ function isCreator(id = player.id) {
     return creatorId === id;
 }
 
-function startGameLoop () {
-    if (isCreator()) {
-        sendStartGameToServer();
-    }
-    startGameUpdate = true;
-}
-
 function stopGameLoop () {
     startGameUpdate = false;
+}
+
+function startGameLoop  () {
+    startGameUpdate = true;
 }
 
 function convertEntities1DArrayToNodes(entities) {

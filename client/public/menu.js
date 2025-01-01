@@ -51,7 +51,7 @@ function startGame() {
     document.getElementById('scoreBoardGroup').style.display = 'block';
     hideReadyButton();
     hideStartGameButton();
-    startGameLoop();
+    sendStartGameToServer();
     renderCountdown();
 }
 
