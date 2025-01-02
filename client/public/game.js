@@ -27,11 +27,18 @@ const CLOSE_VIOLATION = {
     ROOM_FULL: 4005,
 }
 
+const COLOR = {
+    SIGN: '#d3d3d3',
+    BACKGROUND: '#f1f1f1',
+    ENTITY: '#242424'
+}
+
 function establishConnection() {
     const roomId = getRoomId();
     const playerName = getPlayerName();
     connection = new WebSocket(`${ADDR}${CHANNEL}?roomId=${roomId}&playerName=${playerName}`)
-
+    connection.binaryType = 'arraybuffer';
+    
     connection.onerror = error => {
         console.log(`WebSocket error:`, error)
     }
@@ -93,8 +100,8 @@ function renderObstacle({id, size, nodes}, isFill) {
     const {x, y} = payload || nodes[0];
 
     gameCtx.beginPath();
-    gameCtx.fillStyle = '#f1f1f1';
-    gameCtx.strokeStyle = '#242424';
+    gameCtx.fillStyle = COLOR.BACKGROUND;
+    gameCtx.strokeStyle = COLOR.ENTITY;
     gameCtx.lineWidth = 2; 
 
     gameCtx.rect(x - size / 2, y - size / 2, size, size);
@@ -104,8 +111,8 @@ function renderObstacle({id, size, nodes}, isFill) {
     if (isFill) {
         const innerSize = size / 2;
         gameCtx.beginPath();
-        gameCtx.fillStyle = '#242424';
-        gameCtx.strokeStyle = '#f1f1f1';
+        gameCtx.fillStyle = COLOR.ENTITY;
+        gameCtx.strokeStyle = COLOR.BACKGROUND;
         gameCtx.lineWidth = 2;
         gameCtx.rect(x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
         gameCtx.fill();
@@ -133,9 +140,9 @@ function renderFood({id, size, nodes}) {
 
     gameCtx.beginPath();
     gameCtx.lineWidth = 5;
-    gameCtx.strokeStyle = '#242424';
+    gameCtx.strokeStyle = COLOR.ENTITY;
     gameCtx.arc(x, y, size/2, 0, Math.PI * 2, false);
-    gameCtx.fillStyle = '#f1f1f1';
+    gameCtx.fillStyle = COLOR.BACKGROUND;
     gameCtx.stroke();
     gameCtx.fill();
 
@@ -193,7 +200,7 @@ function renderSnakeHead(entity) {
     gameCtx.lineWidth = 5;
     gameCtx.strokeStyle = snakeColor;
     gameCtx.arc(x + 3, y + 5, size/3, 0, Math.PI * 2, false);
-    gameCtx.fillStyle = '#f1f1f1';
+    gameCtx.fillStyle = COLOR.BACKGROUND;
     gameCtx.stroke();
     gameCtx.fill();
 
@@ -222,7 +229,7 @@ function renderLabel({ direction, node, value}) {
     const { x, y } = node;
     const { y: dy } = direction;
 
-    gameCtx.fillStyle = '#242424';
+    gameCtx.fillStyle = COLOR.ENTITY;
     gameCtx.font = '12px Arial';
     gameCtx.textAlign = 'center';
 
@@ -261,7 +268,7 @@ function renderSnake(entity) {
         gameCtx.lineWidth = 2;
         gameCtx.strokeStyle = snakeColor;
         gameCtx.arc(node.x, node.y, entity.size / 2, 0, Math.PI * 2, false);
-        gameCtx.fillStyle = '#f1f1f1';
+        gameCtx.fillStyle = COLOR.BACKGROUND;
         gameCtx.fill();
         gameCtx.stroke();
     });
@@ -284,12 +291,12 @@ function getSnakeColor(entity) {
     const isPlayer = isEntityPlayer(entity);
 
     if (currentPlace === 0) {
-        return '#ffbf00';
+        return '#cc9900';
     } else {
         if (isPlayer) {
             return '#66023c'
         } else {
-            return '#242424';
+            return COLOR.ENTITY;
         }
     }
 }
@@ -352,7 +359,7 @@ function createDiagonalPattern() {
     patternCanvas.width = 10;
     patternCanvas.height = 10;
 
-    patternCtx.strokeStyle = '#d3d3d3';
+    patternCtx.strokeStyle = COLOR.SIGN;
     patternCtx.lineWidth = 1;
     patternCtx.beginPath();
     patternCtx.moveTo(0, 0);
@@ -372,7 +379,7 @@ function renderSpawnArea() {
     const pattern = createDiagonalPattern();
 
     gameCtx.beginPath();
-    gameCtx.strokeStyle = '#d3d3d3';
+    gameCtx.strokeStyle = COLOR.SIGN;
     gameCtx.fillStyle = pattern;
     gameCtx.lineWidth = 1;
     gameCtx.rect(centerX - squareSize / 2, centerY - squareSize / 2, squareSize, squareSize);
@@ -473,14 +480,14 @@ function renderAnnouncement(text) {
             if (index === 0) {
                 uiCtx.font = '30px Arial';
                 uiCtx.fontWeight = 'bold';
-                uiCtx.fillStyle = '#242424';        
+                uiCtx.fillStyle = COLOR.ENTITY;        
                 uiCtx.fillText(line, uiCanvas.width / 2, uiCanvas.height / 2);
                 return;
             }
 
             uiCtx.font = '20px Arial';
             uiCtx.fontWeight = 'bold';
-            uiCtx.fillStyle = '#242424';    
+            uiCtx.fillStyle = COLOR.ENTITY;    
             uiCtx.fillText(line, uiCanvas.width / 2, uiCanvas.height / 2 + index * lineHeight);
         });
     }});
@@ -493,7 +500,7 @@ function updateUIScore() {
         uiCtx.textAlign = 'left';
         uiCtx.font = '24px Arial';
         uiCtx.fontWeight = 'bold';
-        uiCtx.fillStyle = '#242424';
+        uiCtx.fillStyle = COLOR.ENTITY;
         uiCtx.fillText(`🏆 ${player.score}`, leftMargin, topMargin);
     }});
 }
@@ -506,7 +513,7 @@ function updateUIGameTimeLeft() {
         uiCtx.textAlign = 'center';
         uiCtx.font = '24px Arial';
         uiCtx.fontWeight = 'bold';
-        uiCtx.fillStyle = '#242424';
+        uiCtx.fillStyle = COLOR.ENTITY;
         uiCtx.fillText(`⏱️ ${convertToCountdown(gameTime)}`, uiCanvas.width / 2, topMargin);
     }});
 }
@@ -518,7 +525,7 @@ function updateUIEffects() {
         uiCtx.textAlign = 'right';
         uiCtx.font = '24px Arial';
         uiCtx.fontWeight = 'bold';
-        uiCtx.fillStyle = '#242424';
+        uiCtx.fillStyle = COLOR.ENTITY;
 
         const invulnerableTimeleft = convertToCountdown(player.invulnerable);
 
@@ -852,7 +859,7 @@ function renderWall() {
     const spikeLength = 5;
     const spikeSpacing = 15;
 
-    gameCtx.strokeStyle = '#d3d3d3';
+    gameCtx.strokeStyle = COLOR.SIGN;
     gameCtx.lineWidth = 2;
 
     for (let x = 0; x < gameCanvas.width - spikeLength; x += spikeSpacing) {
@@ -970,6 +977,18 @@ function renderGameCanvasToUICanvas () {
 
 }
 
+function convertToObject({data}) {
+    
+    if (data instanceof ArrayBuffer) {
+        const uint8Array = new Uint8Array(data);
+    } else if (typeof data === "string") {      
+        return JSON.parse(data);
+    }
+
+    return {};
+}
+
+
 establishConnection();
 let gameCanvas = createGameCanvas();
 let uiCanvas = createUICanvas();
@@ -1009,7 +1028,8 @@ connection.onclose = ({code}) => {
     }
 }
 
-connection.onmessage = ({data}) => {
+connection.onmessage = (event) => {
+
     try {
         const {playerId, 
             entities, 
@@ -1018,7 +1038,7 @@ connection.onmessage = ({data}) => {
             readyList: rl, 
             gameTime: gt,
             gameStarted,
-        } = JSON.parse(data);
+        } = convertToObject(event);
 
         if (sb) {
             scoreBoard = sb;

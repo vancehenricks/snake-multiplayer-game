@@ -153,7 +153,7 @@ function renderTouchedEntitiesToClient(room) {
                 data = {...data, scoreBoard: room.scoreBoard};
             }
 
-            client?.send(JSON.stringify(data));
+            sendData(client, data);
         })
     }
 }
@@ -171,7 +171,7 @@ function sendReadyToClients(room, player) {
     getPlayerEntities(room).forEach((entity) => {
         if (entity.id === player.id) return;
         const client = getClient(entity);
-        client?.send(JSON.stringify({readyList: room.readyList}));
+        sendData(client, {readyList: room.readyList});
     })  
 }
 
@@ -186,7 +186,7 @@ function renderEverythingToClients(room, player) {
             data = { playerId: player.id };
         }
 
-        client?.send(JSON.stringify({...data, entities: room.gameEntities, creatorId: room.creatorId, readyList: room.readyList}));
+        sendData(client, {...data, entities: room.gameEntities, creatorId: room.creatorId, readyList: room.readyList});
     })
 }
 
@@ -896,10 +896,10 @@ function renderGameStatesToClient(room) {
     getPlayerEntities(room).forEach((entity) => {
         const client = getClient(entity);
 
-        client?.send(JSON.stringify({
+        sendData(client, {
                 gameStarted: true, 
                 gameTime: room.gameTime, 
-        }));
+        });
     });
 };
 
@@ -923,6 +923,16 @@ function sanitizeBoolean(value) {
     if (typeof value === 'boolean') return value;
     
     return undefined;
+}
+
+function sendData(client, data) {
+    let buffer;
+    if (Buffer.isBuffer(data)) {
+        buffer = Buffer.alloc(data.length);
+    } else {
+        buffer = JSON.stringify(data);
+    }
+    client?.send(buffer);
 }
 
 app.ws(CHANNEL, (ws, req) => {
