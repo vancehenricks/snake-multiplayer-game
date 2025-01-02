@@ -837,9 +837,18 @@ function updateEntities(entities) {
             entity.id === gEntity.id
         )
 
+        // Find the corresponding nodes for the entity
+        const nodesData = [...nodesPool].find((node) => entity.id === node.id)?.nodes;
+        const nodes = nodesData ? convert1DArrayToNodes(nodesData) : null;
+
         let updatedEntity = updateTail(entity, gameEntity);
 
-        return {...gameEntity, ...updatedEntity};
+        // Add nodes to the entity if they exist
+        if (nodes) {
+            updatedEntity = { ...updatedEntity, nodes };
+        }
+
+        return { ...gameEntity, ...updatedEntity };
 
     }).filter(entity => hasCompleteProperties(entity))
 
@@ -936,7 +945,6 @@ function startGameLoop  () {
 function convertEntities1DArrayToNodes(entities) {
     
     return [...entities].map(entity => {
-
         if (entity.nodes) {
             return {
                 ...entity,
@@ -977,11 +985,42 @@ function renderGameCanvasToUICanvas () {
 
 }
 
+function splitToMultipleEntities(uInt32Array) {
+    const delimiter = 4294967295;
+    const datas = Array.from(uInt32Array);
+    let entity = {};
+    let nodes = [];
+    let entities = [];
+
+    datas.forEach((data) => {
+        if (data === delimiter) {
+            if (Object.keys(entity).length > 0) {
+                entity.nodes = nodes;
+                entities.push(entity);
+            }
+            entity = {};
+            nodes = [];
+        } else if (!entity.id) {
+            entity.id = data;
+        } else {
+            nodes.push(data);
+        }
+    });
+
+    if (Object.keys(entity).length > 0) {
+        entity.nodes = nodes;
+        entities.push(entity);
+    }
+
+    return { nodesPool: entities };
+}
+
 function convertToObject({data}) {
     
     if (data instanceof ArrayBuffer) {
-        const uint8Array = new Uint8Array(data);
-    } else if (typeof data === "string") {      
+        const uint32Array = new Uint32Array(data);
+        return splitToMultipleEntities(uint32Array);    
+    } else if (typeof data === "string") {
         return JSON.parse(data);
     }
 
@@ -1006,6 +1045,7 @@ let gameTime = null;
 let creatorId = null;
 let readyList = [];
 let isPlayerReady = false;
+let nodesPool = [];
 
 connection.onclose = ({code}) => {
     if(code === CLOSE_VIOLATION.GAME_ALREADY_STARTED) {
@@ -1038,6 +1078,7 @@ connection.onmessage = (event) => {
             readyList: rl, 
             gameTime: gt,
             gameStarted,
+            nodesPool: np,
         } = convertToObject(event);
 
         if (sb) {
@@ -1058,10 +1099,13 @@ connection.onmessage = (event) => {
         if(gameStarted && !isCreator()) {
             startGame();
         }
-        
+
+        if(np) {
+            nodesPool = np;
+        }
+
         if (entities) {
-            let convertedEntities = convertEntities1DArrayToNodes(entities);
-                convertedEntities = addAnimationIndicatorsToEntities(convertedEntities);
+            let convertedEntities = addAnimationIndicatorsToEntities(entities);
             if (playerId) {
                 player = getPlayer(convertedEntities, playerId);
                 gameEntities = convertedEntities;

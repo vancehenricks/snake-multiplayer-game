@@ -107,12 +107,15 @@ function convertObjectTo1DArray(obj) {
 
 function generateEntityProperties(entity) {
     let updatedEntity = {};
-    Object.keys(entity.touched).forEach((property) => {
+    let updatedNodes = [];
+    const delimiter = 4294967295;
 
+    Object.keys(entity.touched).forEach((property) => {
         if (property === PAYLOAD_PROPERTIES.NODES) {
+            updatedNodes = [delimiter,entity.id, ...convertNodesTo1DArray(entity.nodes)];
+
             updatedEntity = {
                 ...updatedEntity,
-                nodes: convertNodesTo1DArray(entity.nodes)
             }
         } else {
             updatedEntity = {
@@ -122,7 +125,7 @@ function generateEntityProperties(entity) {
         }
     })
 
-    return updatedEntity;
+    return { updatedEntity,  updatedNodes};
 }
 
 function isTouchedEmpty(entity) {
@@ -145,15 +148,21 @@ function renderTouchedEntitiesToClient(room) {
         getPlayerEntities(room).forEach((entity) => {
             const client = getClient(entity);
 
-            let data = {
-                entities: unusedPropertiesRemoved,
-             };
+            //console.log('Sending to client:', unusedPropertiesRemoved);
+
+            let forJson = {
+                entities: unusedPropertiesRemoved.map((entity) => entity.updatedEntity),
+            };
 
             if(entity.touched.score) {
-                data = {...data, scoreBoard: room.scoreBoard};
+                forJson = {...forJson, scoreBoard: room.scoreBoard};
             }
 
-            sendData(client, data);
+            let buffer = unusedPropertiesRemoved.map((entity) => entity.updatedNodes);
+                buffer = new Uint32Array(buffer.flat()).buffer;
+            
+            sendData(client, buffer);
+            sendData(client, forJson);
         })
     }
 }
@@ -927,8 +936,8 @@ function sanitizeBoolean(value) {
 
 function sendData(client, data) {
     let buffer;
-    if (Buffer.isBuffer(data)) {
-        buffer = Buffer.alloc(data.length);
+    if (data instanceof ArrayBuffer) {
+        buffer = Buffer.from(data);
     } else {
         buffer = JSON.stringify(data);
     }
