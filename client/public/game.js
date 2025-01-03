@@ -408,14 +408,6 @@ function renderEntities() {
     renderPlayer();
 }
 
-function convert1DArrayToNodes (array) {
-    let nodes = [];
-    for (let i = 0; i < array.length; i += 2) {
-        nodes.push({x: array[i], y: array[i+1]});
-    }
-    return nodes;
-}
-
 function getPlayer(entities, playerId = player.id) {
     return [...entities].find((entity) => entity.id === playerId) || player;
 }
@@ -764,10 +756,10 @@ function movePlayerEntities() {
 }
 
 function hasCompleteProperties(entity) {
+
     const ENTITY_PROPERTIES = [
         'type',
         'id',
-        'position', //TODO: this is not used anywhere could make some change to this
         'name',
         'size',
         'score',
@@ -787,7 +779,7 @@ function hasCompleteProperties(entity) {
         })
     });
 
-    return hits === ENTITY_PROPERTIES.length-1;
+    return hits === ENTITY_PROPERTIES.length;
 }
 
 function updateTail(entity, gameEntity) {
@@ -837,16 +829,7 @@ function updateEntities(entities) {
             entity.id === gEntity.id
         )
 
-        // Find the corresponding nodes for the entity
-        const nodesData = [...nodesPool].find((node) => entity.id === node.id)?.nodes;
-        const nodes = nodesData ? convert1DArrayToNodes(nodesData) : null;
-
         let updatedEntity = updateTail(entity, gameEntity);
-
-        // Add nodes to the entity if they exist
-        if (nodes) {
-            updatedEntity = { ...updatedEntity, nodes };
-        }
 
         return { ...gameEntity, ...updatedEntity };
 
@@ -942,19 +925,57 @@ function startGameLoop  () {
     startGameUpdate = true;
 }
 
-function convertEntities1DArrayToNodes(entities) {
-    
+
+function convert1DArrayToNodes (array) {
+    let nodes = [];
+    for (let i = 0; i < array.length; i += 2) {
+        nodes.push({x: array[i], y: array[i+1]});
+    }
+    return nodes;
+}
+
+function convert1DArrayToInvulnerable (array) {
+    return {
+        timeout: array[0],
+        maxMs: array[1],
+    }
+}
+
+function convert1DArrayToDirection (array) {
+    return {
+        x: array[0],
+        y: array[1],
+    }
+}
+
+function convert1DArrayToTail (array) {
+    return {
+        current: array[0],
+        max: array[1],
+    }
+}
+
+function convertEntities1DArrayToObject(entities) {
     return [...entities].map(entity => {
+        let updatedEntity = { ...entity };
+
         if (entity.nodes) {
-            return {
-                ...entity,
-                nodes: convert1DArrayToNodes(entity.nodes),
-            }
+            updatedEntity.nodes = convert1DArrayToNodes(entity.nodes);
+        }
+        if (entity.invulnerable) {
+            updatedEntity.invulnerable = convert1DArrayToInvulnerable(entity.invulnerable);
+        }
+        if (entity.direction) {
+            updatedEntity.direction = convert1DArrayToDirection(entity.direction);
+        }
+        if (entity.tail) {
+            updatedEntity.tail = convert1DArrayToTail(entity.tail);
         }
 
-        return entity;
+        return updatedEntity;
     });
 }
+
 
 function readyListMatchesCurrentPlayers() {
     const players = [...gameEntities].filter(entity => entity.type === TYPE.PLAYER);
@@ -985,41 +1006,149 @@ function renderGameCanvasToUICanvas () {
 
 }
 
-function splitToMultipleEntities(uInt32Array) {
-    const delimiter = 4294967295;
-    const datas = Array.from(uInt32Array);
-    let entity = {};
-    let nodes = [];
-    let entities = [];
+function decodeDirection(value) {
+    return value-5;
+}
 
-    datas.forEach((data) => {
-        if (data === delimiter) {
-            if (Object.keys(entity).length > 0) {
-                entity.nodes = nodes;
-                entities.push(entity);
-            }
-            entity = {};
-            nodes = [];
-        } else if (!entity.id) {
-            entity.id = data;
-        } else {
-            nodes.push(data);
-        }
-    });
+function uint32ArrayToString(arr) {
+    return String.fromCodePoint(...arr);
+}
 
-    if (Object.keys(entity).length > 0) {
-        entity.nodes = nodes;
-        entities.push(entity);
+function combineThreePartsTo64BitInteger(part1, part2, part3) {
+    return (part1 * 2 ** 40) + (part2 * 2 ** 20) + part3;
+}
+
+function convertToEntities(uInt32Array) {
+    const PAYLOAD_DELIMETER = {
+        ID: 4294967295,
+        TYPE : 4294967294,
+        NAME: 4294967293,
+        SIZE: 4294967292,
+        SCORE: 4294967291,
+        TAIL: 4294967290,
+        DIRECTION: 4294967289,
+        INVULNERABLE: 4294967288,
+        TIMEOUT: 4294967287,
+        STATUS: 4294967286,
+        NODES: 4294967285,
+    }
+    
+    
+    const PAYLOAD_PROPERTIES = {
+        ID: 'id',
+        TYPE: 'type',
+        NAME: 'name',
+        SIZE: 'size',
+        SCORE: 'score',
+        TAIL: 'tail',
+        DIRECTION: 'direction',
+        INVULNERABLE: 'invulnerable',
+        TIMEOUT: 'timeout',
+        STATUS: 'status',
+        NODES: 'nodes',
     }
 
-    return { nodesPool: entities };
+    let entities = [];
+    let currentEntity = {};
+    let currentNodes = [];
+    let currentDirection = [];
+    let currentInvulnerable = [];
+    let currentTail = [];
+    let currentName = [];
+    let currentKey = null;
+
+    function addEntity() {
+        if (!currentEntity.id) return;
+
+        if (currentNodes.length > 0) {
+            currentEntity = { ...currentEntity, nodes: currentNodes };
+        }
+        if (currentDirection.length > 0) {
+            currentEntity = { ...currentEntity, direction: currentDirection };
+        }
+        if (currentInvulnerable.length > 0) {
+            const timeout = combineThreePartsTo64BitInteger(...currentInvulnerable.slice(0, -1));
+            const maxMs = currentInvulnerable[currentInvulnerable.length - 1];
+            currentEntity = { ...currentEntity, invulnerable: [ timeout, maxMs ] };
+        }
+        if (currentTimeout.length > 0) {
+            const timeout = combineThreePartsTo64BitInteger(currentTimeout);
+            currentEntity = { ...currentEntity, timeout };
+        }
+        if (currentTail.length > 0) {
+            currentEntity = { ...currentEntity, tail: currentTail };
+        }
+        if (currentName.length > 0) {
+            currentEntity = { ...currentEntity, name: uint32ArrayToString(currentName) };
+        }
+        entities = [...entities, currentEntity];
+    }
+
+    for (let i = 0; i < uInt32Array.length; i++) {
+        const value = uInt32Array[i];
+        if (value === PAYLOAD_DELIMETER.ID) {
+            addEntity();
+            currentEntity = {};
+            currentNodes = [];
+            currentDirection = [];
+            currentInvulnerable = [];
+            currentTimeout = [];
+            currentTail = [];
+            currentName = [];
+            currentKey = PAYLOAD_PROPERTIES.ID;
+        } else if (value === PAYLOAD_DELIMETER.TYPE) {
+            currentKey = PAYLOAD_PROPERTIES.TYPE;
+        } else if (value === PAYLOAD_DELIMETER.NAME) {
+            currentKey = PAYLOAD_PROPERTIES.NAME;
+        } else if (value === PAYLOAD_DELIMETER.SIZE) {
+            currentKey = PAYLOAD_PROPERTIES.SIZE;
+        } else if (value === PAYLOAD_DELIMETER.SCORE) {
+            currentKey = PAYLOAD_PROPERTIES.SCORE;
+        } else if (value === PAYLOAD_DELIMETER.TAIL) {
+            currentKey = PAYLOAD_PROPERTIES.TAIL;
+        } else if (value === PAYLOAD_DELIMETER.DIRECTION) {
+            currentKey = PAYLOAD_PROPERTIES.DIRECTION;
+        } else if (value === PAYLOAD_DELIMETER.INVULNERABLE) {
+            currentKey = PAYLOAD_PROPERTIES.INVULNERABLE;
+        } else if (value === PAYLOAD_DELIMETER.TIMEOUT) {
+            currentKey = PAYLOAD_PROPERTIES.TIMEOUT;
+        } else if (value === PAYLOAD_DELIMETER.STATUS) {
+            currentKey = PAYLOAD_PROPERTIES.STATUS;
+        } else if (value === PAYLOAD_DELIMETER.NODES) {
+            currentKey = PAYLOAD_PROPERTIES.NODES;
+        } else {
+            if (currentKey === PAYLOAD_PROPERTIES.NODES) {
+                currentNodes = [...currentNodes, value];
+            } else if (currentKey === PAYLOAD_PROPERTIES.DIRECTION) {
+                currentDirection = [...currentDirection, decodeDirection(value)];
+            } else if (currentKey === PAYLOAD_PROPERTIES.INVULNERABLE) {
+                currentInvulnerable = [...currentInvulnerable, value];
+            } else if (currentKey === PAYLOAD_PROPERTIES.TAIL) {
+                currentTail = [...currentTail, value];
+            } else if (currentKey === PAYLOAD_PROPERTIES.NAME) {
+                currentName = [...currentName, value];
+            } else if (currentKey === PAYLOAD_DELIMETER.TIMEOUT) {
+                currentTimeout = [...currentTimeout, value];
+            } else {
+                currentEntity = { ...currentEntity, [currentKey]: value };
+            }
+        }
+    }
+  
+    addEntity();
+
+    return entities;
 }
 
 function convertToObject({data}) {
     
     if (data instanceof ArrayBuffer) {
         const uint32Array = new Uint32Array(data);
-        return splitToMultipleEntities(uint32Array);    
+        const entities = convertToEntities(uint32Array)
+        
+        const convertedEntities = convertEntities1DArrayToObject(entities);  
+
+        return { entities: convertedEntities};  
     } else if (typeof data === "string") {
         return JSON.parse(data);
     }
@@ -1045,7 +1174,6 @@ let gameTime = null;
 let creatorId = null;
 let readyList = [];
 let isPlayerReady = false;
-let nodesPool = [];
 
 connection.onclose = ({code}) => {
     if(code === CLOSE_VIOLATION.GAME_ALREADY_STARTED) {
@@ -1100,12 +1228,11 @@ connection.onmessage = (event) => {
             startGame();
         }
 
-        if(np) {
-            nodesPool = np;
-        }
+
 
         if (entities) {
             let convertedEntities = addAnimationIndicatorsToEntities(entities);
+
             if (playerId) {
                 player = getPlayer(convertedEntities, playerId);
                 gameEntities = convertedEntities;

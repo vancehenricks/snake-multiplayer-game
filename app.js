@@ -27,26 +27,24 @@ const STATUS = {
     DEAD: 1
 }
 
-const PAYLOAD_INDEX = {
-    TYPE : 0,
-    ID: 1,
-    NAME: 2,
-    SIZE: 3,
-    SCORE: 4,
-    TAIL: 5,
-    DIRECTION: 8,
-    INVULNERABLE: 10,
-    TIMEOUT: 11,
-    STATUS: 12,
-    NODES: 13,
-    SCORE_BOARD: 13+MAX_TAIL,
-    END: 13+MAX_TAIL+MAX_PLAYERS_PER_ROOM,
+const PAYLOAD_DELIMETER = {
+    ID: 4294967295,
+    TYPE : 4294967294,
+    NAME: 4294967293,
+    SIZE: 4294967292,
+    SCORE: 4294967291,
+    TAIL: 4294967290,
+    DIRECTION: 4294967289,
+    INVULNERABLE: 4294967288,
+    TIMEOUT: 4294967287,
+    STATUS: 4294967286,
+    NODES: 4294967285,
 }
 
 
 const PAYLOAD_PROPERTIES = {
-    TYPE: 'type',
     ID: 'id',
+    TYPE: 'type',
     NAME: 'name',
     SIZE: 'size',
     SCORE: 'score',
@@ -56,22 +54,7 @@ const PAYLOAD_PROPERTIES = {
     TIMEOUT: 'timeout',
     STATUS: 'status',
     NODES: 'nodes',
-    SCORE_BOARD: 'scoreBoard',
 }
-
-const SCORE_ID = {
-    ID: 0,
-    NAME: 1,
-    SCORE: 2,
-    DATE: 3,
-}
-
-const SCORE_PROPERTIES = [
-    'id',
-    'name',
-    'score',
-    'date',
-]
 
 const CHANNEL = '/game';
 
@@ -104,28 +87,72 @@ function convertObjectTo1DArray(obj) {
     return Object.values(obj).flat();
 }
 
+function stringToUint32Array(str) {
+    const arr = new Uint32Array(str.length);
+    for (let i = 0; i < str.length; i++) {
+        arr[i] = str.codePointAt(i);
+    }
+    return arr;
+}
+
+function encodeDirection(value) {
+    return value + 5;
+}
+
+function split64BitIntegerToThreeParts(value) {
+    const part1 = Math.floor(value / 2 ** 40);
+    const part2 = Math.floor((value % 2 ** 40) / 2 ** 20);
+    const part3 = value % 2 ** 20;
+    return [part1, part2, part3];
+}
+
 
 function generateEntityProperties(entity) {
-    let updatedEntity = {};
-    let updatedNodes = [];
-    const delimiter = 4294967295;
+
+    let updatedEntity = [
+        PAYLOAD_DELIMETER.ID,
+        entity.id,
+    ];
 
     Object.keys(entity.touched).forEach((property) => {
         if (property === PAYLOAD_PROPERTIES.NODES) {
-            updatedNodes = [delimiter,entity.id, ...convertNodesTo1DArray(entity.nodes)];
-
-            updatedEntity = {
+            updatedEntity = [...updatedEntity, 
+                PAYLOAD_DELIMETER.NODES, 
+                ...convertNodesTo1DArray(entity.nodes)];  
+        } else if (property === PAYLOAD_PROPERTIES.INVULNERABLE) {
+            updatedEntity = [...updatedEntity, 
+                PAYLOAD_DELIMETER.INVULNERABLE, 
+                ...split64BitIntegerToThreeParts(entity.invulnerable.timeout),
+                entity.invulnerable.maxMs];
+        } else if (property === PAYLOAD_PROPERTIES.TAIL) {
+            updatedEntity = [...updatedEntity, 
+                PAYLOAD_DELIMETER.TAIL, 
+                ...convertObjectTo1DArray(entity.tail)];
+        } else if (property === PAYLOAD_PROPERTIES.DIRECTION) {
+            updatedEntity = [...updatedEntity, 
+                PAYLOAD_DELIMETER.DIRECTION, 
+                ...convertObjectTo1DArray(entity.direction).map(encodeDirection)];
+        } else if (property === PAYLOAD_PROPERTIES.NAME) {
+                updatedEntity = [...updatedEntity, 
+                    PAYLOAD_DELIMETER.NAME, 
+                    ...stringToUint32Array(entity.name)];
+        } else if (property === PAYLOAD_DELIMETER.TIMEOUT) {
+            updatedEntity = [
                 ...updatedEntity,
-            }
-        } else {
-            updatedEntity = {
+                PAYLOAD_DELIMETER.TIMEOUT,
+                ...split64BitIntegerToThreeParts(entity.timeout),
+            ];
+        }
+        else if (property !== PAYLOAD_PROPERTIES.ID) {
+            updatedEntity = [
                 ...updatedEntity,
-                [property]: entity[property]
-            }
+                PAYLOAD_DELIMETER[property.toUpperCase()],
+                entity[property]
+            ]
         }
     })
 
-    return { updatedEntity,  updatedNodes};
+    return updatedEntity;
 }
 
 function isTouchedEmpty(entity) {
@@ -143,28 +170,19 @@ function renderTouchedEntitiesToClient(room) {
     );
 
     const unusedPropertiesRemoved = touchedEntities.map(entity => generateEntityProperties(entity));
-    
-    if(unusedPropertiesRemoved.length > 0) {
-        getPlayerEntities(room).forEach((entity) => {
-            const client = getClient(entity);
 
-            //console.log('Sending to client:', unusedPropertiesRemoved);
+    getPlayerEntities(room).forEach((entity) => {
+        const client = getClient(entity);
 
-            let forJson = {
-                entities: unusedPropertiesRemoved.map((entity) => entity.updatedEntity),
-            };
-
-            if(entity.touched.score) {
-                forJson = {...forJson, scoreBoard: room.scoreBoard};
-            }
-
-            let buffer = unusedPropertiesRemoved.map((entity) => entity.updatedNodes);
-                buffer = new Uint32Array(buffer.flat()).buffer;
-            
-            sendData(client, buffer);
+        if(entity.touched.score) {
+            const forJson = {scoreBoard: room.scoreBoard};
             sendData(client, forJson);
-        })
-    }
+        }
+
+        let buffer = unusedPropertiesRemoved.map((properties) => properties);
+            buffer = new Uint32Array(buffer.flat()).buffer;
+        sendData(client, buffer);
+    })
 }
 
 function untouchedGameEntities(room) {
@@ -195,7 +213,13 @@ function renderEverythingToClients(room, player) {
             data = { playerId: player.id };
         }
 
-        sendData(client, {...data, entities: room.gameEntities, creatorId: room.creatorId, readyList: room.readyList});
+        //remove touched object
+        const entities = [...room.gameEntities].map(entity => {
+            const {touched, ...rest} = entity;
+            return rest;
+        });
+
+        sendData(client, {...data, entities, creatorId: room.creatorId, readyList: room.readyList});
     })
 }
 
@@ -348,7 +372,6 @@ function touchAllProperties() {
     return {
         type: true,
         id: true,
-        position: true,
         name: true,
         size: true,
         score: true,
