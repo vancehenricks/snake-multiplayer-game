@@ -77,14 +77,8 @@ server.listen(process.env.PORT)
 
 console.log('Server listening on port:', process.env.PORT);
 
-function combineTwo16BitNumbers(high, low) {
-    return ((high & 0xFFFF) << 16) | (low & 0xFFFF);
-}
-
 function convertNodesTo1DArray(nodes) {
-    return nodes.map(node => {
-        return combineTwo16BitNumbers(node.x, node.y);
-    });
+    return nodes.map(node => [node.x, node.y]).flat();
 }
 
 function convertObjectTo1DArray(obj) {
@@ -111,7 +105,7 @@ function split64BitIntegerToThreeParts(value) {
 }
 
 
-function encodeEntityProperties(entity) {
+function generateEntityProperties(entity) {
 
     let updatedEntity = [
         PAYLOAD_DELIMETER.ID,
@@ -173,7 +167,7 @@ function renderTouchedEntitiesToClient(room) {
         isTouchedEmpty(gameEntity)
     );
 
-    const unusedPropertiesRemoved = touchedEntities.map(entity => encodeEntityProperties(entity));
+    const unusedPropertiesRemoved = touchedEntities.map(entity => generateEntityProperties(entity));
 
     getPlayerEntities(room).forEach((entity) => {
         const client = getClient(entity);
@@ -796,8 +790,8 @@ function movePlayerEntities(room) {
                 speed = DEFAULT_IDLE_SPEED;
             }
 
-            const newNode = createNode({x: x - dx * speed, 
-                y: y - dy * speed});
+            const newNode = createNode({x: Math.floor(x - dx * speed), 
+                y: Math.floor(y - dy * speed)});
 
             const newEntity = {
                 ...entity,
