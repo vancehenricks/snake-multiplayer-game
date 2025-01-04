@@ -915,7 +915,7 @@ function updateGame() {
     updateScoreBoard();
     playerControl();
     renderEntities();
-    movePlayerEntities();
+    //movePlayerEntities();
 
     updateUIEffects();
     updateUIGameTimeLeft();
@@ -936,11 +936,17 @@ function startGameLoop  () {
     startGameUpdate = true;
 }
 
+function decodeTwo16BitNumbers(combined) {
+    const high = (combined >> 16) & 0xFFFF;
+    const low = combined & 0xFFFF;
+    return { high, low };
+}
 
 function convert1DArrayToNodes (array) {
     let nodes = [];
     for (let i = 0; i < array.length; i += 2) {
-        nodes.push({x: array[i], y: array[i+1]});
+        const {high, low} = decodeTwo16BitNumbers(array[i]);
+        nodes.push({x: high, y: low});
     }
     return nodes;
 }
