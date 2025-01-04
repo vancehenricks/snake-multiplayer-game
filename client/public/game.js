@@ -915,7 +915,7 @@ function updateGame() {
     updateScoreBoard();
     playerControl();
     renderEntities();
-    movePlayerEntities();
+    //movePlayerEntities();
 
     updateUIEffects();
     updateUIGameTimeLeft();
