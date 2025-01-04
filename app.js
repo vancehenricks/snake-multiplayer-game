@@ -77,10 +77,6 @@ server.listen(process.env.PORT)
 
 console.log('Server listening on port:', process.env.PORT);
 
-function convertNodesTo1DArray(nodes) {
-    return nodes.map(node => [node.x, node.y]).flat();
-}
-
 function convertObjectTo1DArray(obj) {
     return Object.values(obj).flat();
 }
@@ -104,6 +100,13 @@ function split64BitIntegerToThreeParts(value) {
     return [part1, part2, part3];
 }
 
+function combineTwo16BitNumbers(high, low) {
+    return ((high & 0xFFFF) << 16) | (low & 0xFFFF);
+}
+
+function convertNodesTo1DArray(nodes) {
+    return nodes.map(node => combineTwo16BitNumbers(node.x, node.y));
+}
 
 function generateEntityProperties(entity) {
 

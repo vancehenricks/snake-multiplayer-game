@@ -1029,6 +1029,21 @@ function combineThreePartsTo64BitInteger(part1, part2, part3) {
     return (part1 * 2 ** 40) + (part2 * 2 ** 20) + part3;
 }
 
+function decodeTwo16BitNumbers(combined) {
+    const high = (combined >> 16) & 0xFFFF;
+    const low = combined & 0xFFFF;
+    return { high, low };
+}
+
+function decodeNodes(nodes) {
+    let unpackedNodes = [];
+    for (let i = 0; i < nodes.length; i++) {
+        const { high, low } = decodeTwo16BitNumbers(nodes[i]);
+        unpackedNodes.push(high, low);
+    }
+    return unpackedNodes;
+}
+
 function convertToEntities(uInt32Array) {
     const PAYLOAD_DELIMETER = {
         ID: 4294967295,
@@ -1070,7 +1085,7 @@ function convertToEntities(uInt32Array) {
         if (!currentEntity.id) return;
 
         if (currentNodes.length > 0) {
-            currentEntity = { ...currentEntity, nodes: currentNodes };
+            currentEntity = { ...currentEntity, nodes: decodeNodes(currentNodes) };
         }
         if (currentDirection.length > 0) {
             currentEntity = { ...currentEntity, direction: currentDirection };
