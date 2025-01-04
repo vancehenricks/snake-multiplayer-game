@@ -1,4 +1,5 @@
 const DEFAULT_IDLE_SPEED = 5;
+const DEFAULT_ENTITY_SIZE = 5;
 const CLIENT_TICK_MS = 50;
 const CHANNEL = '/game';
 const TYPE = {
@@ -81,10 +82,6 @@ function sendReadyToServer() {
     sendToServer({ready: isPlayerReady});
 }
 
-function updateScore() {
-    document.getElementById('score').innerText = player.score;  
-}
-
 function createAnimationId(entityId, animationName) {
     return entityId + ',' + animationName;
 }
@@ -93,9 +90,19 @@ function getEntityIdFromAnimationId(animationId) {
     return animationId.split(',')[0];
 }
 
-function renderObstacle({id, size, nodes}, isFill) {
+function getEntitySize (score, type) {
+
+    if (type === TYPE.PLAYER) { 
+        return DEFAULT_ENTITY_SIZE;
+    }
+
+    return DEFAULT_ENTITY_SIZE + score;
+}
+
+function renderObstacle({id, score, nodes, type}, isFill) {
     const animationId = createAnimationId(id, 'obstacle');
     const payload = getAnimationFramePayload(animationId);
+    const size = getEntitySize(score, type);
 
     const {x, y} = payload || nodes[0];
 
@@ -132,9 +139,10 @@ function renderObstacle({id, size, nodes}, isFill) {
     }
 }
 
-function renderFood({id, size, nodes}) {
+function renderFood({id, score, nodes, type}) {
     const animationId = createAnimationId(id, 'spawn');
     const payload = getAnimationFramePayload(animationId);
+    const size = getEntitySize(score, type);
 
     const {x, y} = payload || nodes[0];
 
@@ -163,7 +171,8 @@ function renderSnakeHead(entity) {
     const node = entity.nodes[0];
     const animationId = createAnimationId(entity.id, 'eat');
     const payload = getAnimationFramePayload(animationId);
-    const size = payload?.size || entity.size * 2;
+    const entitySize = getEntitySize(entity.score, entity.type);
+    const size = payload?.size || entitySize * 2;
     const {x, y} = {x: node.x - 3, y: node.y - 5}
     const snakeColor = getSnakeColor(entity);
 
@@ -246,9 +255,10 @@ function renderName(entity) {
 
 function renderSnake(entity) {
     const snakeColor = getSnakeColor(entity);
+    const size = getEntitySize(entity.score, entity.type);
 
     gameCtx.beginPath();
-    gameCtx.lineWidth = entity.size;
+    gameCtx.lineWidth = size;
     gameCtx.strokeStyle = snakeColor;
     gameCtx.lineCap = 'round';
 
@@ -267,7 +277,7 @@ function renderSnake(entity) {
         gameCtx.beginPath();
         gameCtx.lineWidth = 2;
         gameCtx.strokeStyle = snakeColor;
-        gameCtx.arc(node.x, node.y, entity.size / 2, 0, Math.PI * 2, false);
+        gameCtx.arc(node.x, node.y, size / 2, 0, Math.PI * 2, false);
         gameCtx.fillStyle = COLOR.BACKGROUND;
         gameCtx.fill();
         gameCtx.stroke();
@@ -304,7 +314,8 @@ function getSnakeColor(entity) {
 function renderInvulnerableEffect(entity) {
     const animationId = createAnimationId(entity.id, 'invulnerable');
     const payload = getAnimationFramePayload(animationId);
-    const {nodes, size} = entity;
+    const size = getEntitySize(entity.score, entity.type);
+    const {nodes} = entity;
     const {x, y} = nodes[0];
     const secondsLeft = convertToSeconds(getRemainingTimeMs(entity.invulnerable));
     const snakeColor = getSnakeColor(entity);
@@ -735,8 +746,9 @@ function movePlayerEntities() {
                 speed = DEFAULT_IDLE_SPEED;
             }
 
-            const newNode = createNode({x: x - dx * speed, 
-                y: y - dy * speed});
+            const newNode = createNode({x: Math.floor(x - dx * speed), 
+                y: Math.floor(y - dy * speed)});
+
 
             const newEntity = {
                 ...entity,
@@ -761,7 +773,6 @@ function hasCompleteProperties(entity) {
         'type',
         'id',
         'name',
-        'size',
         'score',
         'tail',
         'direction',
@@ -898,8 +909,8 @@ function updateGame() {
         renderUI();
         return;
     };
-    
-    updateScore(); //to remove once migrated to UI
+
+    generateScoreBoard();
     updateUIScore();
     updateScoreBoard();
     playerControl();
@@ -1023,7 +1034,6 @@ function convertToEntities(uInt32Array) {
         ID: 4294967295,
         TYPE : 4294967294,
         NAME: 4294967293,
-        SIZE: 4294967292,
         SCORE: 4294967291,
         TAIL: 4294967290,
         DIRECTION: 4294967289,
@@ -1038,7 +1048,6 @@ function convertToEntities(uInt32Array) {
         ID: 'id',
         TYPE: 'type',
         NAME: 'name',
-        SIZE: 'size',
         SCORE: 'score',
         TAIL: 'tail',
         DIRECTION: 'direction',
@@ -1100,8 +1109,6 @@ function convertToEntities(uInt32Array) {
             currentKey = PAYLOAD_PROPERTIES.TYPE;
         } else if (value === PAYLOAD_DELIMETER.NAME) {
             currentKey = PAYLOAD_PROPERTIES.NAME;
-        } else if (value === PAYLOAD_DELIMETER.SIZE) {
-            currentKey = PAYLOAD_PROPERTIES.SIZE;
         } else if (value === PAYLOAD_DELIMETER.SCORE) {
             currentKey = PAYLOAD_PROPERTIES.SCORE;
         } else if (value === PAYLOAD_DELIMETER.TAIL) {
@@ -1156,6 +1163,10 @@ function convertToObject({data}) {
     return {};
 }
 
+function generateScoreBoard() {
+    scoreBoard = [...gameEntities].filter(entity => entity.type === TYPE.PLAYER)
+    .sort((a, b) => b.score - a.score);
+}
 
 establishConnection();
 let gameCanvas = createGameCanvas();
@@ -1201,17 +1212,12 @@ connection.onmessage = (event) => {
     try {
         const {playerId, 
             entities, 
-            scoreBoard: sb, 
             creatorId: ci,
             readyList: rl, 
             gameTime: gt,
             gameStarted,
             nodesPool: np,
         } = convertToObject(event);
-
-        if (sb) {
-            scoreBoard = sb;
-        }
 
         if (ci) {
             creatorId = ci;

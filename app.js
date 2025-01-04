@@ -31,7 +31,6 @@ const PAYLOAD_DELIMETER = {
     ID: 4294967295,
     TYPE : 4294967294,
     NAME: 4294967293,
-    SIZE: 4294967292,
     SCORE: 4294967291,
     TAIL: 4294967290,
     DIRECTION: 4294967289,
@@ -46,7 +45,6 @@ const PAYLOAD_PROPERTIES = {
     ID: 'id',
     TYPE: 'type',
     NAME: 'name',
-    SIZE: 'size',
     SCORE: 'score',
     TAIL: 'tail',
     DIRECTION: 'direction',
@@ -173,12 +171,6 @@ function renderTouchedEntitiesToClient(room) {
 
     getPlayerEntities(room).forEach((entity) => {
         const client = getClient(entity);
-
-        if(entity.touched.score) {
-            const forJson = {scoreBoard: room.scoreBoard};
-            sendData(client, forJson);
-        }
-
         let buffer = unusedPropertiesRemoved.map((properties) => properties);
             buffer = new Uint32Array(buffer.flat()).buffer;
         sendData(client, buffer);
@@ -213,9 +205,9 @@ function renderEverythingToClients(room, player) {
             data = { playerId: player.id };
         }
 
-        //remove touched object
+        //remove touched object and size from the entity
         const entities = [...room.gameEntities].map(entity => {
-            const {touched, ...rest} = entity;
+            const {touched, size, ...rest} = entity;
             return rest;
         });
 
@@ -373,7 +365,6 @@ function touchAllProperties() {
         type: true,
         id: true,
         name: true,
-        size: true,
         score: true,
         tail: true,
         direction: true,
@@ -414,9 +405,8 @@ function createRoom(roomId, entity) {
     rooms[roomId] = {
         roomId,
         gameEntities: [],
-        scoreBoard: [],
+        renderPool: [],
         tickTimeOutId: null,
-        scoreBoardTimeOutId: null,
         gameTime: null,
         creatorId: entity.id,
         gameStarted: false,
@@ -507,7 +497,7 @@ function generatePositionFarFromPlayers(room) {
         type: TYPE.FOOD,
         name: 'Food',
         tail: createTail({current: 0, max: 0}),
-        size: DEFAULT_ENTITY_SIZE + score / .9,
+        size: DEFAULT_ENTITY_SIZE + score,
         position: generatePositionFarFromPlayers(room),
         direction: createNode({x: 0, y: 0}),
         score,
@@ -524,7 +514,7 @@ function spawnObstacleEntities(room) {
         type: TYPE.OBSTACLE,
         name: 'Obstacle',
         tail: createTail({current: 0, max: 0}),
-        size: DEFAULT_ENTITY_SIZE + score / .9,
+        size: DEFAULT_ENTITY_SIZE + score,
         position: generatePositionFarFromPlayers(room),
         direction: createNode({x: 0, y: 0}),
         score,
@@ -800,8 +790,8 @@ function movePlayerEntities(room) {
                 speed = DEFAULT_IDLE_SPEED;
             }
 
-            const newNode = createNode({x: x - dx * speed, 
-                y: y - dy * speed});
+            const newNode = createNode({x: Math.floor(x - dx * speed), 
+                y: Math.floor(y - dy * speed)});
 
             const newEntity = {
                 ...entity,
@@ -816,29 +806,6 @@ function movePlayerEntities(room) {
     });
 }
 
-function createScoreEntry({id, name, score}) {
-    return {id, name, score, date: Date.now()};
-}
-
-function sortEntryToScoreBoard(room, scoreEntry) {;
-    let initialScoreBoard = removeInScoreBoard(room, scoreEntry);
-    initialScoreBoard = [...initialScoreBoard, scoreEntry];
-    room.scoreBoard = initialScoreBoard.sort((a, b) => b.score - a.score);
-}
-
-function removeInScoreBoard(room, scoreEntry) {
-    return [...room.scoreBoard].filter((entry) => entry.id !== scoreEntry.id);
-}
-
-function calculateScoresOfPlayers(room) {
-    [...room.gameEntities].forEach((entity) => {
-        if(entity.type === TYPE.PLAYER) {
-             const scoreEntry = createScoreEntry({...entity});
-            sortEntryToScoreBoard(room, scoreEntry);
-        }
-    });
-}
-
 function getCenterPosition() {
     return {
         x: Math.floor(MAP.WIDTH / 2),
@@ -847,7 +814,7 @@ function getCenterPosition() {
 }
 
 function touchNodes(entity) {
-    return {...entity, touched: { ...entity.touched, tail: true, id: true, nodes: true }}
+    return {...entity, touched: { ...entity.touched, id: true, nodes: true }}
 }
 
 function updateGame(room) {
@@ -855,13 +822,11 @@ function updateGame(room) {
     spawnObstacleEntities(room);
     checkForIntersect(room);
     movePlayerEntities(room);
-    calculateScoresOfPlayers(room);
     renderTouchedEntitiesToClient(room);
     untouchedGameEntities(room);
     removeDeadEntities(room);
     markDeadWhenTimedOut(room);
 }
-
 
 function updateEntityFromRoom(room, entity) {
     if (room) {
@@ -912,10 +877,6 @@ function stopGameLoop(room) {
         if (room.tickTimeOutId) {
             clearTimeout(room.tickTimeOutId);
             room.tickTimeOutId = null;
-        }
-        if (room.scoreBoardTimeOutId) {
-            clearTimeout(room.scoreBoardTimeOutId);
-            room.scoreBoardTimeOutId = null;
         }
     }
 }
