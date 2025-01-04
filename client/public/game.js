@@ -1088,7 +1088,8 @@ function convertToEntities(uInt32Array) {
             currentEntity = { ...currentEntity, nodes: decodeNodes(currentNodes) };
         }
         if (currentDirection.length > 0) {
-            currentEntity = { ...currentEntity, direction: currentDirection };
+            const { high, low } = decodeTwo16BitNumbers(currentDirection);
+            currentEntity = { ...currentEntity, direction: [decodeDirection(high), decodeDirection(low)] };
         }
         if (currentInvulnerable.length > 0) {
             const timeout = combineThreePartsTo64BitInteger(...currentInvulnerable.slice(0, -1));
@@ -1100,7 +1101,8 @@ function convertToEntities(uInt32Array) {
             currentEntity = { ...currentEntity, timeout };
         }
         if (currentTail.length > 0) {
-            currentEntity = { ...currentEntity, tail: currentTail };
+            const { high, low } = decodeTwo16BitNumbers(currentTail);
+            currentEntity = { ...currentEntity, tail: [ high, low ] };
         }
         if (currentName.length > 0) {
             currentEntity = { ...currentEntity, name: uint32ArrayToString(currentName) };
@@ -1142,7 +1144,7 @@ function convertToEntities(uInt32Array) {
             if (currentKey === PAYLOAD_PROPERTIES.NODES) {
                 currentNodes = [...currentNodes, value];
             } else if (currentKey === PAYLOAD_PROPERTIES.DIRECTION) {
-                currentDirection = [...currentDirection, decodeDirection(value)];
+                currentDirection = [...currentDirection, value];
             } else if (currentKey === PAYLOAD_PROPERTIES.INVULNERABLE) {
                 currentInvulnerable = [...currentInvulnerable, value];
             } else if (currentKey === PAYLOAD_PROPERTIES.TAIL) {

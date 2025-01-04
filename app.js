@@ -104,7 +104,7 @@ function combineTwo16BitNumbers(high, low) {
     return ((high & 0xFFFF) << 16) | (low & 0xFFFF);
 }
 
-function convertNodesTo1DArray(nodes) {
+function packNodes(nodes) {
     return nodes.map(node => combineTwo16BitNumbers(node.x, node.y));
 }
 
@@ -119,7 +119,7 @@ function generateEntityProperties(entity) {
         if (property === PAYLOAD_PROPERTIES.NODES) {
             updatedEntity = [...updatedEntity, 
                 PAYLOAD_DELIMETER.NODES, 
-                ...convertNodesTo1DArray(entity.nodes)];  
+                ...packNodes(entity.nodes)];  
         } else if (property === PAYLOAD_PROPERTIES.INVULNERABLE) {
             updatedEntity = [...updatedEntity, 
                 PAYLOAD_DELIMETER.INVULNERABLE, 
@@ -128,11 +128,11 @@ function generateEntityProperties(entity) {
         } else if (property === PAYLOAD_PROPERTIES.TAIL) {
             updatedEntity = [...updatedEntity, 
                 PAYLOAD_DELIMETER.TAIL, 
-                ...convertObjectTo1DArray(entity.tail)];
+                combineTwo16BitNumbers(...convertObjectTo1DArray(entity.tail))];
         } else if (property === PAYLOAD_PROPERTIES.DIRECTION) {
             updatedEntity = [...updatedEntity, 
                 PAYLOAD_DELIMETER.DIRECTION, 
-                ...convertObjectTo1DArray(entity.direction).map(encodeDirection)];
+                combineTwo16BitNumbers(...convertObjectTo1DArray(entity.direction).map(encodeDirection))];
         } else if (property === PAYLOAD_PROPERTIES.NAME) {
                 updatedEntity = [...updatedEntity, 
                     PAYLOAD_DELIMETER.NAME, 
