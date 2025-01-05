@@ -585,7 +585,6 @@ function displayWinner() {
     stopGameLoop();
     removeAllUIElement();
     gameOver();
-    generateScoreBoard();
     renderAnnouncement(`🏆\n${scoreBoard[0].name}`);
 }
 
@@ -914,6 +913,7 @@ function updateGame() {
     clearCanvas();
     renderWall();
     renderSpawnArea();
+    generateScoreBoard();
     if (!startGameUpdate) {
         updatePlayerList();
         removeDeadEntities();
@@ -921,7 +921,6 @@ function updateGame() {
         return;
     };
 
-    generateScoreBoard();
     updateUIScore();
     updateScoreBoard();
     playerControl();
