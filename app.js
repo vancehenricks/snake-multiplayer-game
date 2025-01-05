@@ -1,6 +1,6 @@
 const GAME_TICK_MS = 50;
 const DEFAULT_ENTITY_SIZE = 5;
-const MAX_TAIL = 50;
+const MAX_TAIL = 30;
 const MAX_PLAYERS_PER_ROOM = 12;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
