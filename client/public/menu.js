@@ -58,7 +58,9 @@ function createRoom() {
 function startGame() {
     
     document.getElementById('playerListGroup').style.display = 'none';
-    document.getElementById('scoreBoardGroup').style.display = 'block';
+    document.getElementById('nameGroup').style.display = 'none';
+    document.getElementById('roomGroup').style.display = 'none';
+
     hideReadyButton();
     hideReminder();
     hideStartGameButton();
@@ -158,6 +160,8 @@ function restoreRoomId() {
 function gameOver() {
     document.getElementById('playerNameInput').disabled = false;
     document.getElementById('roomIdInput').disabled = false;
+    document.getElementById('nameGroup').style.display = 'block';
+    document.getElementById('roomGroup').style.display = 'block';
     document.getElementById('tryAgainButton').style.display = 'block';
     document.getElementById('returnToMenuButton').style.display = 'block';
     hideReminder();
@@ -185,7 +189,6 @@ function startup() {
     restoreRoomId();
     document.getElementById('gameCanvas').style.display = 'none';
     document.getElementById('instruction').style.display = 'none';
-    document.getElementById('scoreBoardGroup').style.display = 'none';
     document.getElementById('playerListGroup').style.display = 'none';
     document.getElementById('tryAgainButton').style.display = 'none';
     document.getElementById('returnToMenuButton').style.display = 'none';

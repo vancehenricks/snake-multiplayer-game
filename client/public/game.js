@@ -17,6 +17,8 @@ const UI_ELEMENTS = {
     ANNOUNCEMENT: 'announcement',
     SCORE: 'score',
     EFFECTS: 'effects',
+    SCORE_BOARD: 'scoreboard',
+    SCORE_BOARD_INSTRUCTION: 'scoreboardInstruction',
 }
 
 const CLOSE_VIOLATION = {
@@ -546,6 +548,19 @@ function updateUIEffects() {
     }});
 }
 
+function updateUIScoreBoardInstruction() {
+    addUIElement({id: UI_ELEMENTS.SCORE_BOARD_INSTRUCTION, render: () => {
+        const bottomMargin = 10;
+        const rightMargin = 10;
+        uiCtx.textAlign = 'right';
+        uiCtx.font = '24px Tahoma, sans-serif';
+        uiCtx.fontWeight = 'bold';
+        uiCtx.fillStyle = COLOR.ENTITY;
+        uiCtx.fillText('[V] 📝', uiCanvas.width - rightMargin, uiCanvas.height - bottomMargin);
+    }});
+}
+
+
 function renderCountdown() {
     let countDownStartGame = 4;
 
@@ -627,23 +642,77 @@ function addCellToTable(table, value) {
     table.appendChild(column);
 }
 
-function updateScoreBoard() {
-    const scoreBoardTable = document.getElementById('scoreBoard');
-    scoreBoardTable.innerHTML = '';
-    const column = document.createElement('ol');
-    scoreBoard.forEach((scoreEntry, index) => {
-        if (index === 0) {
-            addCellToTable(column, '🥇 ' + scoreEntry.name + ': ' + scoreEntry.score);
-        } else if (index === 1) {
-            addCellToTable(column, '🥈 ' + scoreEntry.name + ': ' + scoreEntry.score);
-        } else if (index === 2) {
-            addCellToTable(column, '🥉 ' + scoreEntry.name + ': ' + scoreEntry.score);
-        } else {
-            addCellToTable(column, scoreEntry.name + ' : ' + scoreEntry.score);
+function drawPlayerScoreTable(roomName, players) {
+    const tableWidth = 300;
+    const tableHeight = players.length * 30 + 70;
+    const startX = (uiCanvas.width - tableWidth) / 2;
+    const startY = (uiCanvas.height - tableHeight) / 2;
 
+    uiCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    uiCtx.fillRect(startX, startY, tableWidth, tableHeight);
+
+    uiCtx.fillStyle = 'white';
+    uiCtx.font = '18px Arial';
+    uiCtx.textAlign = 'center';
+    uiCtx.fillText(roomName, startX + tableWidth / 2, startY + 30);
+
+    uiCtx.font = '16px Arial';
+    uiCtx.textAlign = 'left';
+    uiCtx.fillText('Player', startX + 20, startY + 60);
+    uiCtx.textAlign = 'right';
+    uiCtx.fillText('Score', startX + tableWidth - 20, startY + 60);
+
+    uiCtx.strokeStyle = 'white';
+    uiCtx.lineWidth = 1;
+    uiCtx.beginPath();
+    uiCtx.moveTo(startX + 20, startY + 70);
+    uiCtx.lineTo(startX + tableWidth - 20, startY + 70);
+    uiCtx.stroke();
+
+
+    
+    uiCtx.font = '14px Arial';
+    players.forEach((p, index) => {
+        const y = startY + 90 + index * 30;
+
+        let playerName = p.id === player.id ? p.name + ' (You)' : p.name;
+
+        if (index === 0) {
+            playerName = '🥇 ' + playerName
+        } else if (index === 1) {
+            playerName = '🥈 ' + playerName;
+        } else if (index === 2) {
+            playerName = '🥉 ' + playerName;
         }
+
+        uiCtx.textAlign = 'left';
+        uiCtx.fillText(playerName, startX + 20, y);
+        uiCtx.textAlign = 'right';
+        uiCtx.fillText(p.score, startX + tableWidth - 20, y);
+        if (index === players.length - 1) return;
+        uiCtx.beginPath();
+        uiCtx.moveTo(startX + 20, y + 10);
+        uiCtx.lineTo(startX + tableWidth - 20, y + 10);
+        uiCtx.stroke();
     });
-    scoreBoardTable.appendChild(column);
+}
+
+function updateUIScoreBoard() {
+    if (openScoreBoard) {
+        addUIElement({id: UI_ELEMENTS.SCORE_BOARD, render: () => {
+            drawPlayerScoreTable(getRoomId(), scoreBoard);
+        }});
+    } else {
+        removeUIElement({id: UI_ELEMENTS.SCORE_BOARD});
+    }
+}
+
+function menuControls() {
+    if (keys['v'] || keys['V']) {
+        openScoreBoard = true;
+    } else {
+        openScoreBoard = false;
+    }
 }
 
 function isInReadyList(entity) {
@@ -921,14 +990,16 @@ function updateGame() {
         return;
     };
 
+    updateUIScoreBoard();
     updateUIScore();
-    updateScoreBoard();
     playerControl();
+    menuControls();
     renderEntities();
     movePlayerEntities();
 
     updateUIEffects();
     updateUIGameTimeLeft();
+    updateUIScoreBoardInstruction();
     removeDeadEntities();
     renderGameCanvasToUICanvas();
     renderUI();
@@ -1216,6 +1287,7 @@ let gameTime = null;
 let creatorId = null;
 let readyList = [];
 let isPlayerReady = false;
+let openScoreBoard = false;
 
 connection.onclose = ({code}) => {
     if(code === CLOSE_VIOLATION.GAME_ALREADY_STARTED) {
