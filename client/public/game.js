@@ -585,6 +585,7 @@ function displayWinner() {
     stopGameLoop();
     removeAllUIElement();
     gameOver();
+    generateScoreBoard();
     renderAnnouncement(`🏆\n${scoreBoard[0].name}`);
 }
 

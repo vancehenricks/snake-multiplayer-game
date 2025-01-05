@@ -456,7 +456,7 @@ function createEntity({
     name='Player',
     size=DEFAULT_ENTITY_SIZE,
     score=0,
-    tail=createTail({current: 0, max: 4}),
+    tail=createTail({current: 0, max: 3}),
     direction=generateRandomDirection(),
     invulnerable=createInvulnerableState(),
     timeout=Date.now(),
