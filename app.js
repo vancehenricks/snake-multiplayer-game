@@ -1,6 +1,6 @@
 const GAME_TICK_MS = 50;
 const DEFAULT_ENTITY_SIZE = 5;
-const MAX_TAIL = 30;
+const MAX_TAIL = 50;
 const MAX_PLAYERS_PER_ROOM = 12;
 const DEFAULT_IDLE_SPEED = 5;
 const IDLE_TIMEOUT_MS = 30000;
@@ -456,7 +456,7 @@ function createEntity({
     name='Player',
     size=DEFAULT_ENTITY_SIZE,
     score=0,
-    tail=createTail({current: 0, max: 3}),
+    tail=createTail({current: 0, max: 4}),
     direction=generateRandomDirection(),
     invulnerable=createInvulnerableState(),
     timeout=Date.now(),
@@ -625,8 +625,8 @@ function isEntitySelf(entity1, entity2) {
 
 function addScoreToEntity(entity, score) {
 
-    const maxTail = entity.tail.max <= MAX_TAIL ? entity.tail.max + score : entity.tail.max;
-
+    const calculatedMaxTail = entity.tail.max + score
+    const maxTail = calculatedMaxTail > MAX_TAIL ? MAX_TAIL : calculatedMaxTail;
     return {...entity, tail: {...entity.tail, max: maxTail},
     score: entity.score + score, touched: {id: true, tail: true, score: true}};
 }
