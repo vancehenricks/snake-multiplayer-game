@@ -297,18 +297,18 @@ function clearCanvas() {
 }
 
 function getSnakeColor(entity) {
-    const currentPlace = scoreBoard.findIndex((scoreEntry) => scoreEntry.id === entity.id);
+    //const currentPlace = scoreBoard.findIndex((scoreEntry) => scoreEntry.id === entity.id);
     const isPlayer = isEntityPlayer(entity);
 
-    if (currentPlace === 0) {
-        return '#cc9900';
-    } else {
+    //if (currentPlace === 0) {
+    //    return '#cc9900';
+    //} else {
         if (isPlayer) {
             return '#66023c'
         } else {
             return COLOR.ENTITY;
         }
-    }
+    //}
 }
 
 function renderInvulnerableEffect(entity) {
