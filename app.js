@@ -94,9 +94,12 @@ function encodeDirection(value) {
 }
 
 function split64BitIntegerToThreeParts(value) {
-    const part1 = Math.floor(value / 2 ** 40);
-    const part2 = Math.floor((value % 2 ** 40) / 2 ** 20);
-    const part3 = value % 2 ** 20;
+    const twoPow40 = 1099511627776;
+    const twoPow20 = 1048576;
+
+    const part1 = Math.floor(value / twoPow40);
+    const part2 = Math.floor((value % twoPow40) / twoPow20);
+    const part3 = value % twoPow20;
     return [part1, part2, part3];
 }
 
