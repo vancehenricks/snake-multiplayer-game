@@ -239,7 +239,7 @@ function renderLabel({ direction, node, value}) {
     const { y: dy } = direction;
 
     gameCtx.fillStyle = COLOR.ENTITY;
-    gameCtx.font = '12px Arial';
+    gameCtx.font = '12px Tahoma, sans-serif';
     gameCtx.textAlign = 'center';
 
     if (dy === -1) {
@@ -481,14 +481,14 @@ function renderAnnouncement(text) {
 
         lines.forEach((line, index) => {
             if (index === 0) {
-                uiCtx.font = '30px Arial';
+                uiCtx.font = '30px Tahoma, sans-serif';
                 uiCtx.fontWeight = 'bold';
                 uiCtx.fillStyle = COLOR.ENTITY;        
                 uiCtx.fillText(line, uiCanvas.width / 2, uiCanvas.height / 2);
                 return;
             }
 
-            uiCtx.font = '20px Arial';
+            uiCtx.font = '20px Tahoma, sans-serif';
             uiCtx.fontWeight = 'bold';
             uiCtx.fillStyle = COLOR.ENTITY;    
             uiCtx.fillText(line, uiCanvas.width / 2, uiCanvas.height / 2 + index * lineHeight);
@@ -501,7 +501,7 @@ function updateUIScore() {
         const topMargin = 30;
         const leftMargin = 10;
         uiCtx.textAlign = 'left';
-        uiCtx.font = '24px Arial';
+        uiCtx.font = '24px Tahoma, sans-serif';
         uiCtx.fontWeight = 'bold';
         uiCtx.fillStyle = COLOR.ENTITY;
         uiCtx.fillText(`🏆 ${player.score}`, leftMargin, topMargin);
@@ -514,7 +514,7 @@ function updateUIGameTimeLeft() {
     addUIElement({id: UI_ELEMENTS.TIMELEFT, render: () => {
         const topMargin = 30;
         uiCtx.textAlign = 'center';
-        uiCtx.font = '24px Arial';
+        uiCtx.font = '24px Tahoma, sans-serif';
         uiCtx.fontWeight = 'bold';
         uiCtx.fillStyle = COLOR.ENTITY;
         uiCtx.fillText(`⏱️ ${convertToCountdown(gameTime)}`, uiCanvas.width / 2, topMargin);
@@ -526,7 +526,7 @@ function updateUIEffects() {
         const topMargin = 30;
         const rightMargin = 10;
         uiCtx.textAlign = 'right';
-        uiCtx.font = '24px Arial';
+        uiCtx.font = '24px Tahoma, sans-serif';
         uiCtx.fontWeight = 'bold';
         uiCtx.fillStyle = COLOR.ENTITY;
 

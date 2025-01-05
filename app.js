@@ -27,33 +27,6 @@ const STATUS = {
     DEAD: 1
 }
 
-const PAYLOAD_DELIMETER = {
-    ID: 4294967295,
-    TYPE : 4294967294,
-    NAME: 4294967293,
-    SCORE: 4294967291,
-    TAIL: 4294967290,
-    DIRECTION: 4294967289,
-    INVULNERABLE: 4294967288,
-    TIMEOUT: 4294967287,
-    STATUS: 4294967286,
-    NODES: 4294967285,
-}
-
-
-const PAYLOAD_PROPERTIES = {
-    ID: 'id',
-    TYPE: 'type',
-    NAME: 'name',
-    SCORE: 'score',
-    TAIL: 'tail',
-    DIRECTION: 'direction',
-    INVULNERABLE: 'invulnerable',
-    TIMEOUT: 'timeout',
-    STATUS: 'status',
-    NODES: 'nodes',
-}
-
 const CHANNEL = '/game';
 
 var http = require('http')
@@ -112,6 +85,34 @@ function packNodes(nodes) {
 }
 
 function generateEntityProperties(entity) {
+
+    const PAYLOAD_DELIMETER = {
+        ID: 4294967295,
+        TYPE : 4294967294,
+        NAME: 4294967293,
+        SCORE: 4294967291,
+        TAIL: 4294967290,
+        DIRECTION: 4294967289,
+        INVULNERABLE: 4294967288,
+        TIMEOUT: 4294967287,
+        STATUS: 4294967286,
+        NODES: 4294967285,
+    }
+    
+    
+    const PAYLOAD_PROPERTIES = {
+        ID: 'id',
+        TYPE: 'type',
+        NAME: 'name',
+        SCORE: 'score',
+        TAIL: 'tail',
+        DIRECTION: 'direction',
+        INVULNERABLE: 'invulnerable',
+        TIMEOUT: 'timeout',
+        STATUS: 'status',
+        NODES: 'nodes',
+    }
+
 
     let updatedEntity = [
         PAYLOAD_DELIMETER.ID,
@@ -198,6 +199,14 @@ function sendReadyToClients(room, player) {
         const client = getClient(entity);
         sendData(client, {readyList: room.readyList});
     })  
+}
+
+function sendStartGameToClients(room, player) {
+    getPlayerEntities(room).forEach((entity) => {
+        if (entity.id === player.id) return;
+        const client = getClient(entity);
+        sendData(client, {gameStarted: true});
+    });
 }
 
 function renderEverythingToClients(room, player) {
@@ -891,13 +900,24 @@ function deleteAllClients(room) {
     [...room.gameEntities].forEach((entity) => deleteClient(entity));
 }
 
+function resetPlayersInvulnerability(room) {
+    room.gameEntities = [...room.gameEntities].map((entity) => {
+        if (entity.type === TYPE.PLAYER) {
+            return {...entity, invulnerable: createInvulnerableState()};
+        }
+        return entity;
+    }
+    );
+}
+
 function renderGameStatesToClient(room) {
     getPlayerEntities(room).forEach((entity) => {
         const client = getClient(entity);
-
+        resetPlayersInvulnerability(room);
+    
         sendData(client, {
-                gameStarted: true, 
-                gameTime: room.gameTime, 
+                gameTime: room.gameTime,
+                entities: room.gameEntities,
         });
     });
 };
@@ -1009,6 +1029,7 @@ app.ws(CHANNEL, (ws, req) => {
             }
 
             if (startGame && refPlayer.id === room.creatorId && !room.gameStarted && readyListMatchesCurrentPlayers(room)) {
+                sendStartGameToClients(room, refPlayer);
                 setTimeout(() => startGameLoop(room), DELAY_START_GAME_MS);
             }
                 
