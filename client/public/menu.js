@@ -17,6 +17,15 @@ function hideReadyButton() {
     document.getElementById('readyButton').style.display = 'none';
 }
 
+function hideReminder() {
+    document.getElementById('reminder').style.display = 'none';
+}
+
+function showReminder(label) {
+    document.getElementById('reminder').textContent = label;
+    document.getElementById('reminder').style.display = 'block';
+}
+
 function createRoom() {
     if(document.getElementById('playerNameInput').value === '') {
         alert('Please enter a name');
@@ -32,8 +41,8 @@ function createRoom() {
     gameScript.id = 'gameScript';
     gameScript.src = 'game.js';
 
-    let url =saveRoomId(window.location.href);
-
+    let url = saveRoomId(window.location.href);
+    url = savePlayerName(url);
     window.history.pushState('Waiting Room', '', url);
 
     document.head.appendChild(gameScript);
@@ -47,9 +56,11 @@ function createRoom() {
 }
 
 function startGame() {
+    
     document.getElementById('playerListGroup').style.display = 'none';
     document.getElementById('scoreBoardGroup').style.display = 'block';
     hideReadyButton();
+    hideReminder();
     hideStartGameButton();
     sendStartGameToServer();
     renderCountdown();
@@ -149,6 +160,8 @@ function gameOver() {
     document.getElementById('roomIdInput').disabled = false;
     document.getElementById('tryAgainButton').style.display = 'block';
     document.getElementById('returnToMenuButton').style.display = 'block';
+    hideReminder();
+    hideReadyButton();
 }
 
 function startGameRightAway() {
@@ -180,6 +193,7 @@ function startup() {
     document.getElementById('createRoomButton').addEventListener('click', createRoom);
     document.getElementById('tryAgainButton').addEventListener('click', tryAgain);
     document.getElementById('returnToMenuButton').addEventListener('click', returnToMenu);
+    hideReminder();
     hideReadyButton();
     hideStartGameButton();
     startGameRightAway();

@@ -90,13 +90,16 @@ function getEntityIdFromAnimationId(animationId) {
     return animationId.split(',')[0];
 }
 
+
 function getEntitySize (score, type) {
 
     if (type === TYPE.PLAYER) { 
         return DEFAULT_ENTITY_SIZE;
     }
 
-    return DEFAULT_ENTITY_SIZE + score;
+    const calculatedScore = DEFAULT_ENTITY_SIZE + score;
+
+    return calculatedScore  > 20 ? 20 : calculatedScore;
 }
 
 function renderObstacle({id, score, nodes, type}, isFill) {
@@ -175,6 +178,7 @@ function renderSnakeHead(entity) {
     const size = payload?.size || entitySize * 2;
     const {x, y} = {x: node.x - 3, y: node.y - 5}
     const snakeColor = getSnakeColor(entity);
+    const currentPlace = scoreBoard.findIndex((scoreEntry) => scoreEntry.id === entity.id);
 
     gameCtx.beginPath();
     gameCtx.lineWidth = 2;
@@ -212,6 +216,13 @@ function renderSnakeHead(entity) {
     gameCtx.fillStyle = COLOR.BACKGROUND;
     gameCtx.stroke();
     gameCtx.fill();
+
+    if (currentPlace === 0) {
+        gameCtx.beginPath();
+        gameCtx.arc(x + 3, y + 5, size / 6, 0, Math.PI * 2, false);
+        gameCtx.fillStyle = snakeColor;
+        gameCtx.fill(); 
+    }
 
     if(payload) {
         if (entity.animation.eat) {
@@ -297,18 +308,13 @@ function clearCanvas() {
 }
 
 function getSnakeColor(entity) {
-    //const currentPlace = scoreBoard.findIndex((scoreEntry) => scoreEntry.id === entity.id);
     const isPlayer = isEntityPlayer(entity);
 
-    //if (currentPlace === 0) {
-    //    return '#cc9900';
-    //} else {
-        if (isPlayer) {
-            return '#66023c'
-        } else {
-            return COLOR.ENTITY;
-        }
-    //}
+    if (isPlayer) {
+        return '#66023c'
+    } else {
+        return COLOR.ENTITY;
+    }
 }
 
 function renderInvulnerableEffect(entity) {
@@ -642,6 +648,10 @@ function updateScoreBoard() {
 
 function isInReadyList(entity) {
     return readyList.includes(entity.id);
+}
+
+function numberOfPlayersReady() {
+    return readyList.length;
 }
 
 function isEntityPlayer(entity) {
@@ -993,6 +1003,10 @@ function readyListMatchesCurrentPlayers() {
     return players.length === readyList.length;
 }
 
+function getPlayerCount () {
+    return [...gameEntities].filter(entity => entity.type === TYPE.PLAYER).length;
+}
+
 function addUIElement(element) {
     if (ui.some(uiElement => uiElement.id === element.id)) {
         removeUIElement(element);
@@ -1233,14 +1247,10 @@ connection.onmessage = (event) => {
             readyList: rl, 
             gameTime: gt,
             gameStarted,
-            nodesPool: np,
         } = convertToObject(event);
 
         if (ci) {
             creatorId = ci;
-            if(!isCreator(playerId)) {
-                showReadyButton();
-            }
         }
 
         if(gt) {
@@ -1268,10 +1278,23 @@ connection.onmessage = (event) => {
 
         if (rl) {
             readyList = rl;
+
+            const numberOfPlayers = ` (${numberOfPlayersReady()}/${getPlayerCount()})`;
+
             if(readyListMatchesCurrentPlayers() && isCreator()) {
+                showReminder('All players are ready' + numberOfPlayers);
                 showStartGameButton();
             } else {
+                showReminder('Waiting for players to be ready' + numberOfPlayers);
                 hideStartGameButton();
+            }
+
+            if (readyListMatchesCurrentPlayers() && !isCreator()) {
+                showReminder('Waiting for host to start the game' + numberOfPlayers);
+            }
+
+            if (!isCreator()) {
+                showReadyButton();
             }
         }
         
