@@ -28,6 +28,7 @@ const CLOSE_VIOLATION = {
     GAME_ALREADY_STARTED: 4003,
     GAME_TIMEDOUT: 4004,
     ROOM_FULL: 4005,
+    CREATOR_LEFT: 4006,
 }
 
 const COLOR = {
@@ -1111,7 +1112,9 @@ function uint32ArrayToString(arr) {
 }
 
 function combineThreePartsTo64BitInteger(part1, part2, part3) {
-    return (part1 * 2 ** 40) + (part2 * 2 ** 20) + part3;
+    const twoPow40 = 1099511627776;
+    const twoPow20 = 1048576;
+    return (part1 * twoPow40) + (part2 * twoPow20) + part3;
 }
 
 function decodeTwo16BitNumbers(combined) {
@@ -1308,6 +1311,10 @@ connection.onclose = ({code}) => {
         alert('Room is full');
         returnToMenu();
     }
+    else if (code === CLOSE_VIOLATION.CREATOR_LEFT) {
+        alert('Host left the room');
+        returnToMenu();
+    }
 }
 
 connection.onmessage = (event) => {
@@ -1350,7 +1357,6 @@ connection.onmessage = (event) => {
 
         if (rl) {
             readyList = rl;
-
             const numberOfPlayers = ` (${numberOfPlayersReady()}/${getPlayerCount()})`;
 
             if(readyListMatchesCurrentPlayers() && isCreator()) {

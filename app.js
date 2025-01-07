@@ -424,6 +424,7 @@ function createRoom(roomId, entity) {
         gameTime: null,
         creatorId: entity.id,
         gameStarted: false,
+        inCountdown: false,
         singlePlayer: false,
         readyList: [],
     };
@@ -446,6 +447,17 @@ function addEntityToRoom(room, entity) {
 function removePlayerFromRoom(room, entity) {
     if (room) {
         room.gameEntities = [...room.gameEntities].filter(gameEntity =>  gameEntity.id !== entity.id);
+    }
+}
+
+function killEntityFromRoom(room, entity) {
+    if (room) {
+        room.gameEntities = [...room.gameEntities].map(gameEntity => {
+            if (gameEntity.id === entity.id) {
+                return killEntity(gameEntity);
+            }
+            return gameEntity;
+        });
     }
 }
 
@@ -882,6 +894,7 @@ function startGameLoop(room) {
     room.gameStarted = true;
     room.singlePlayer = playerEntitiesCount(room) === 1;
     room.gameTime = createGameTime();
+    resetPlayerStates(room);
     renderGameStatesToClient(room);
 
     const hasActivePlayers = playerEntitiesCount(room) > 0;
@@ -917,20 +930,22 @@ function deleteAllClients(room) {
     [...room.gameEntities].forEach((entity) => deleteClient(entity));
 }
 
-function resetPlayersInvulnerability(room) {
+function resetPlayerStates(room) {
     room.gameEntities = [...room.gameEntities].map((entity) => {
         if (entity.type === TYPE.PLAYER) {
-            return {...entity, invulnerable: createInvulnerableState()};
+            return {...entity, 
+                invulnerable: createInvulnerableState(),
+                timeout: Date.now(),
+            };
         }
         return entity;
-    }
+        }
     );
 }
 
 function renderGameStatesToClient(room) {
     getPlayerEntities(room).forEach((entity) => {
         const client = getClient(entity);
-        resetPlayersInvulnerability(room);
     
         sendData(client, {
                 gameTime: room.gameTime,
@@ -971,6 +986,22 @@ function sendData(client, data) {
     client?.send(buffer);
 }
 
+function sendReadyListAndEntitiesToClients(room, player) {
+    getPlayerEntities(room).forEach((entity) => {
+        if (entity.id === player.id) return;
+        const client = getClient(entity);
+        sendData(client, {readyList: room.readyList, entities: room.gameEntities});
+    });
+}
+
+function sendToClientCreatorLeft(room, player) {
+    getPlayerEntities(room).forEach((entity) => {
+        if (entity.id === player.id) return;
+        const client = getClient(entity);
+        client.close(4006, 'Creator left');
+    });
+}
+
 app.ws(CHANNEL, (ws, req) => {
     const roomId = req.query.roomId;
     const playerName = req.query.playerName;
@@ -1007,7 +1038,7 @@ app.ws(CHANNEL, (ws, req) => {
         console.log('Found none, Creating ', req.query.roomId, ' room setting IP:', req.ip, ' as creator');
         createRoom(roomId, refPlayer);
         room = getRoom(roomId);
-    } else if (room.gameStarted) {
+    } else if (room.gameStarted || room.inCountdown) {
         console.log('Game already started in room:', roomId);
         ws.close(4003, 'Game already started');
         return;
@@ -1047,6 +1078,7 @@ app.ws(CHANNEL, (ws, req) => {
 
             if (startGame && refPlayer.id === room.creatorId && !room.gameStarted && readyListMatchesCurrentPlayers(room)) {
                 sendStartGameToClients(room, refPlayer);
+                room.inCountdown = true;
                 setTimeout(() => startGameLoop(room), DELAY_START_GAME_MS);
             }
                 
@@ -1061,14 +1093,24 @@ app.ws(CHANNEL, (ws, req) => {
         if (!room) return;
         const playerCount = playerEntitiesCount(room);
         
-        if (playerCount <= 1 || !room.gameStarted && refPlayer.id === room.creatorId) {
+        if (playerCount <= 1 || !room.gameStarted && refPlayer.id === room.creatorId && !room.inCountdown) {
             stopGameLoop(room);
             deleteRoom(room);
+            sendToClientCreatorLeft(room, refPlayer);
             deleteAllClients(room);
             console.log(`Room ${roomId} has been removed due to no players.`);
         } else {
+            removeEntityToReadyList(room, refPlayer);
+            killEntityFromRoom(room, refPlayer);
+
+            if (room.inCountdown) {
+                renderGameStatesToClient(room);
+            } else {
+                sendReadyListAndEntitiesToClients(room, refPlayer);
+            }
+
             removePlayerFromRoom(room, refPlayer);
-            renderEverythingToClients(room, refPlayer);
+            console.log('Removing player from room:', roomId);
         }
     });
 });
