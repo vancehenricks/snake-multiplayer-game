@@ -247,9 +247,10 @@ function touchListOfKeys (entity) {
     return touched;
 }
 
-function isValidName ({name}) {
+function isValidName ({name, roomId}) {
     if(!name) return false; 
     if(name.length > 12) return false;
+    if (roomId && getRoom(roomId)?.gameEntities.some(entity => entity.name === name)) return false;
     if(!new RegExp(/^\w+$/).test(name)) return false;
     return true;
 }
@@ -986,11 +987,11 @@ function sendData(client, data) {
     client?.send(buffer);
 }
 
-function sendReadyListAndEntitiesToClients(room, player) {
+function renderGameStatesWhileInLobby(room, player) {
     getPlayerEntities(room).forEach((entity) => {
         if (entity.id === player.id) return;
         const client = getClient(entity);
-        sendData(client, {readyList: room.readyList, entities: room.gameEntities});
+        sendData(client, {readyList: room.readyList, entities: room.gameEntities, inLobby: true});
     });
 }
 
@@ -1015,7 +1016,7 @@ app.ws(CHANNEL, (ws, req) => {
     }
      
     
-    if(!isValidName({name: playerName})) {
+    if(!isValidName({name: playerName, roomId})) {
         console.log('Invalid playerName:', playerName);
         ws.close(4002, 'Invalid playerName given');
         return;
@@ -1102,14 +1103,14 @@ app.ws(CHANNEL, (ws, req) => {
         } else {
             removeEntityToReadyList(room, refPlayer);
             killEntityFromRoom(room, refPlayer);
+            removePlayerFromRoom(room, refPlayer);
 
             if (room.inCountdown) {
                 renderGameStatesToClient(room);
             } else {
-                sendReadyListAndEntitiesToClients(room, refPlayer);
+                renderGameStatesWhileInLobby(room, refPlayer);
             }
 
-            removePlayerFromRoom(room, refPlayer);
             console.log('Removing player from room:', roomId);
         }
     });

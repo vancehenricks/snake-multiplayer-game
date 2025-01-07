@@ -1326,6 +1326,7 @@ connection.onmessage = (event) => {
             readyList: rl, 
             gameTime: gt,
             gameStarted,
+            inLobby,
         } = convertToObject(event);
 
         if (ci) {
@@ -1340,9 +1341,9 @@ connection.onmessage = (event) => {
             startGame();
         }
 
-
-
-        if (entities) {
+        if (inLobby && entities) {
+            gameEntities = addAnimationIndicatorsToEntities(entities);
+        } else if (entities) {
             let convertedEntities = addAnimationIndicatorsToEntities(entities);
 
             if (playerId) {
