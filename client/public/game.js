@@ -598,8 +598,8 @@ function displayGameOver() {
 function displayWinner() {
     stopGameLoop();
     removeAllUIElement();
-    generateScoreBoard();
-    renderAnnouncement(`🏆\n${scoreBoard[0].name}\n\n\n\n\n[Enter] Return to Menu`);
+    const sb = getScoreBoard();
+    renderAnnouncement(`🏆\n${sb[0].name}\n\n\n\n\n[Enter] Return to Menu`);
 }
 
 function isInvulnerableTimedOut(entity) {
@@ -1274,9 +1274,13 @@ function convertToObject({data}) {
     return {};
 }
 
-function generateScoreBoard() {
-    scoreBoard = [...gameEntities].filter(entity => entity.type === TYPE.PLAYER)
+function getScoreBoard() {
+    return [...gameEntities].filter(entity => entity.type === TYPE.PLAYER)
     .sort((a, b) => b.score - a.score);
+}
+
+function generateScoreBoard() {
+    scoreBoard = getScoreBoard();
 }
 
 establishConnection();
