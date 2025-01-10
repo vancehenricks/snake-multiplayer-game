@@ -592,14 +592,14 @@ function removeAllUIElement() {
 function displayGameOver() {
     stopGameLoop();
     removeAllUIElement();
-    renderAnnouncement('Game Over');
+    renderAnnouncement(`Game Over'\n[Enter] Return to Menu`);
 }
 
 function displayWinner() {
     stopGameLoop();
     removeAllUIElement();
     const sb = getScoreBoard();
-    renderAnnouncement(`🏆\n${sb[0].name}\n\n\n\n\n[Enter] Return to Menu`);
+    renderAnnouncement(`${sb[0].name} wins!\n\n\n[Enter] Return to Menu`);
 }
 
 function isInvulnerableTimedOut(entity) {
