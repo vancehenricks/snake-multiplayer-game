@@ -51,7 +51,6 @@ function createRoom() {
     document.getElementById('instruction').style.display = 'block';
     document.getElementById('playerNameInput').disabled = true;
     document.getElementById('roomIdInput').disabled = true;
-    document.getElementById('scoreLabel').style.display = 'none';
 }
 
 function startGame() {
@@ -79,20 +78,6 @@ function getParametersValueFromUrl(value) {
     return url.searchParams.get(value);
 }
 
-function preserveScore(url) {
-    return addParametersToUrl({
-        url, 
-        param: 'recentScore',
-        value: document.getElementById('score').innerText});
-}
-
-function restoreScore() {
-    const score = getParametersValueFromUrl('recentScore');
-    if (score) {
-        document.getElementById('score').innerText = score;
-    }
-}
-
 function tryAgain() {
 
     if(document.getElementById('playerNameInput').value === '') {
@@ -113,7 +98,6 @@ function tryAgain() {
 function returnToMenu() {
      let url= savePlayerName(window.location.href);
      url = saveRoomId(url);
-     url = preserveScore(url);
      url = addParametersToUrl({
         url, 
         param: 'startGameRightAway', 
@@ -202,7 +186,6 @@ function startup() {
     hideReadyButton();
     hideStartGameButton();
     startGameRightAway();
-    restoreScore();
 }
 
 window.onload = startup;
