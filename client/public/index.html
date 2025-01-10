@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>SnekPVP.lol - Snake Multiplayer Game</title>
+    <title>snekpvp.lol - a snake multiplayer game</title>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
     <script src="menu.js"></script>
@@ -13,42 +13,56 @@
         color: #242424;
         background-color: #f1f1f1;
         font-family: Tahoma, sans-serif;
+        max-width: max-content;
+        margin: auto;
+        max-height: max-content
+      }
+
+      #title {
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      #main-menu {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 20px;
+      }
+
+      #main-menu button {
+        margin-top: 10px;
+      }
+
+      #nameGroup, #roomGroup, #scoreLabel {
+        margin-top: 10px;
+      }
+
+      #reminder {
+        margin-top: 10px;
+      }
+
+      #instruction {
+        border: 1px dashed #d3d3d3;
+        padding: 10px;
+        margin-top: 10px;
+        font: 14px Tahoma, sans-serif;
+      }
+      
+      #instructionTitle {
+        font-weight: bold;
+        margin-top: 10px;
       }
 
       ol {
         list-style-type: none;
         padding: 0;
       }
-
-      .layout {
-        width: 1366px;
-        height: 768px;
-
-        display: grid;
-        grid:
-          "sidebar body" 1fr
-          / auto 1fr;
-        gap: 8px;
-      }
-
-      .sidebar { grid-area: sidebar; }
-      .body { grid-area: body; }
-
-      .menu {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      #instruction {
-        padding-top: 10px;
-        font-size: smaller;
-      }
-
       </style>
-      <section class="layout">
-        <div class="sidebar">
-          <section class="menu">
+        <div id="main-menu">
+          <div id="title">
+            <h1>snekpvp.lol</h1>
+          </div>
           <div id="nameGroup">
             <label>Name: </label>
             <input type="text" id="playerNameInput" placeholder="Enter your name">
@@ -60,45 +74,32 @@
           <div id="scoreLabel">
             <label>🏆 Score: <span id="score">0</span></label>
           </div>
-          <div>
-            <div id="reminder"></div>
-            <button id="createRoomButton">Join Room</button>
-            <button id="startGameButton">Start Game</button>
-            <button id="readyButton">Ready</button>
-            <button id="tryAgainButton">Try Again</button>
-          </div>
-          <div>
-            <button id="returnToMenuButton">Return to Menu</button>
-          </div>
-          <div>
-          </div>
-          <div>
-            <div id="playerListGroup">
-              <label>Players:</label>
-              <div id="playerList"></div>
-            </div>
-          </div>
-         </section>
-        </div>
-        <div class="body">
-          <canvas id="gameCanvas" width="800" height="800"></canvas>
-          <div id="instruction">
-            <div>
-              Controls:
-            </div>
-            <div> WASD or Arrow keys to move</div>
-            <div> V to view scoreboard</div>
-            <div>
-              Mechanics:
-            </div>
-            <div>Highest points wins the game.
-            <br/>Square food gives more points than circle food.
-            <br/>Eating other snakes will get all their points.
-            <br/>Snake head when shield is down can be killed by square and other snakes.
-            <br/>Hitting border will kill the snake irregardless.
-            </div>
+          <div id="reminder"></div>
+          <button id="createRoomButton">Join Room</button>
+          <button id="startGameButton">Start Game</button>
+          <button id="readyButton">Ready</button>
+          <button id="tryAgainButton">Try Again</button>
+          <button id="returnToMenuButton">Return to Menu</button>
+          <div id="playerListGroup">
+            <div id="playerList"></div>
           </div>
         </div>
-      </section>
+        <canvas id="gameCanvas"></canvas>
+        <div id="instruction">
+          <div id="instructionTitle">
+            Controls:
+          </div>
+          <div>WASD or Arrow keys to move</div>
+          <div>V to view scoreboard</div>
+          <div id="instructionTitle">
+            Mechanics:
+          </div>
+          <div>Highest points wins the game.
+          <br/>Square food gives more points than circle food.
+          <br/>Eating other snakes will get all their points.
+          <br/>Snake head when shield is down can be killed by square and other snakes.
+          <br/>Hitting border will kill the snake irregardless.
+          </div>
+        </div>
   </body>
 </html>

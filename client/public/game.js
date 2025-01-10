@@ -589,19 +589,16 @@ function removeAllUIElement() {
     ui = [];
 }
 
-
 function displayGameOver() {
     stopGameLoop();
     removeAllUIElement();
-    gameOver();
     renderAnnouncement('Game Over');
 }
 
 function displayWinner() {
     stopGameLoop();
     removeAllUIElement();
-    gameOver();
-    renderAnnouncement(`🏆\n${scoreBoard[0].name}`);
+    renderAnnouncement(`🏆\n${scoreBoard[0].name}\n\n\n\n\n[Enter] Return to Menu`);
 }
 
 function isInvulnerableTimedOut(entity) {
@@ -708,11 +705,17 @@ function updateUIScoreBoard() {
     }
 }
 
-function menuControls() {
+function scoreBoardControls() {
     if (keys['v'] || keys['V']) {
         openScoreBoard = true;
     } else {
         openScoreBoard = false;
+    }
+}
+
+function gameOverControls() {
+    if (keys['Enter'] && isGameOver) {
+        returnToMenu();
     }
 }
 
@@ -984,6 +987,7 @@ function updateGame() {
     renderWall();
     renderSpawnArea();
     generateScoreBoard();
+    gameOverControls();
     if (!startGameUpdate) {
         updatePlayerList();
         removeDeadEntities();
@@ -994,7 +998,7 @@ function updateGame() {
     updateUIScoreBoard();
     updateUIScore();
     playerControl();
-    menuControls();
+    scoreBoardControls();
     renderEntities();
     movePlayerEntities();
 
@@ -1012,6 +1016,7 @@ function isCreator(id = player.id) {
 
 function stopGameLoop () {
     startGameUpdate = false;
+    isGameOver = true;
 }
 
 function startGameLoop  () {
@@ -1291,6 +1296,7 @@ let creatorId = null;
 let readyList = [];
 let isPlayerReady = false;
 let openScoreBoard = false;
+let isGameOver = false;
 
 connection.onclose = ({code}) => {
     if(code === CLOSE_VIOLATION.GAME_ALREADY_STARTED) {

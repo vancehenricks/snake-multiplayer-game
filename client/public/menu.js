@@ -49,14 +49,14 @@ function createRoom() {
     document.getElementById('playerListGroup').style.display = 'block';
     document.getElementById('createRoomButton').style.display = 'none';
     document.getElementById('instruction').style.display = 'block';
-    document.getElementById('gameCanvas').style.display = 'block';
     document.getElementById('playerNameInput').disabled = true;
     document.getElementById('roomIdInput').disabled = true;
     document.getElementById('scoreLabel').style.display = 'none';
 }
 
 function startGame() {
-    
+    document.getElementById('instruction').style.display = 'none';
+    document.getElementById('gameCanvas').style.display = 'block';
     document.getElementById('playerListGroup').style.display = 'none';
     document.getElementById('nameGroup').style.display = 'none';
     document.getElementById('roomGroup').style.display = 'none';
@@ -158,6 +158,7 @@ function restoreRoomId() {
 }
 
 function gameOver() {
+    document.getElementById('gameCanvas').style.display = 'none';
     document.getElementById('playerNameInput').disabled = false;
     document.getElementById('roomIdInput').disabled = false;
     document.getElementById('nameGroup').style.display = 'block';
@@ -193,6 +194,7 @@ function startup() {
     document.getElementById('tryAgainButton').style.display = 'none';
     document.getElementById('returnToMenuButton').style.display = 'none';
     document.getElementById('createRoomButton').style.display = 'block';
+    document.getElementById('gameCanvas').style.display = 'none';
     document.getElementById('createRoomButton').addEventListener('click', createRoom);
     document.getElementById('tryAgainButton').addEventListener('click', tryAgain);
     document.getElementById('returnToMenuButton').addEventListener('click', returnToMenu);
