@@ -592,14 +592,13 @@ function removeAllUIElement() {
 function displayGameOver() {
     stopGameLoop();
     removeAllUIElement();
-    renderAnnouncement(`Game Over'\n[Enter] Return to Menu`);
-}
-
-function displayWinner() {
-    stopGameLoop();
-    removeAllUIElement();
-    const sb = getScoreBoard();
-    renderAnnouncement(`${sb[0].name} wins!\n\n\n[Enter] Return to Menu`);
+    
+    function countdown() {
+        removeUIElement({id: UI_ELEMENTS.ANNOUNCEMENT});
+        openScoreBoard = true;
+    }
+    renderAnnouncement('GAME OVER');
+    setTimeout(countdown, 3000);
 }
 
 function isInvulnerableTimedOut(entity) {
@@ -694,6 +693,13 @@ function drawPlayerScoreTable(roomName, players) {
         uiCtx.lineTo(startX + tableWidth - 20, y + 10);
         uiCtx.stroke();
     });
+
+    if (isGameOver) {
+        const message = "Press [Enter] to return to menu";
+        uiCtx.textAlign = 'center';
+        uiCtx.fillStyle = COLOR.ENTITY;
+        uiCtx.fillText(message, startX + tableWidth / 2, startY + tableHeight + 30);
+    }
 }
 
 function updateUIScoreBoard() {
@@ -989,6 +995,7 @@ function updateGame() {
     renderSpawnArea();
     generateScoreBoard();
     gameOverControls();
+    updateUIScoreBoard();
     if (!startGameUpdate) {
         updatePlayerList();
         removeDeadEntities();
@@ -996,7 +1003,6 @@ function updateGame() {
         return;
     };
 
-    updateUIScoreBoard();
     updateUIScore();
     playerControl();
     scoreBoardControls();
@@ -1274,13 +1280,12 @@ function convertToObject({data}) {
     return {};
 }
 
-function getScoreBoard() {
-    return [...gameEntities].filter(entity => entity.type === TYPE.PLAYER)
-    .sort((a, b) => b.score - a.score);
-}
-
 function generateScoreBoard() {
-    scoreBoard = getScoreBoard();
+    const updatedScoreBoard = [...gameEntities].filter(entity => entity.type === TYPE.PLAYER);
+
+    if (updatedScoreBoard.length === 0) return;
+
+    scoreBoard = updatedScoreBoard.sort((a, b) => b.score - a.score);
 }
 
 establishConnection();
@@ -1312,7 +1317,7 @@ connection.onclose = ({code}) => {
         displayGameOver();
     }
     else if (code === CLOSE_VIOLATION.GAME_TIMEDOUT) {
-        displayWinner();
+        displayGameOver();
     }
     else if (code === CLOSE_VIOLATION.INVALID_PLAYER_NAME_GIVEN) {
         alert('Invalid player name given');
