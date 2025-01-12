@@ -573,10 +573,10 @@ function stopWhenOutOfBounds(entity, room) {
 
     if(x < offset || x > MAP.WIDTH-offset || y < offset || y > MAP.HEIGHT-offset) {
 
-        if(entity.type === TYPE.PLAYER) {
+        /*if(entity.type === TYPE.PLAYER) {
             //console.log(`Player ${entity.name} killed by world border`);
             return respawnEntity(entity, room);
-        }
+        }*/
 
         if (entity.type === TYPE.FOOD && entity.score < 20) {
             return killEntity(entity);
@@ -829,14 +829,28 @@ function movePlayerEntities(room) {
             const {x, y} = entity.nodes[0];
             const {x: dx, y: dy} = entity.direction;
             
-            let speed = DEFAULT_IDLE_SPEED+1.3;
+            let speed = DEFAULT_IDLE_SPEED + 1.3;
 
             if(Math.abs(dx) > 0 && Math.abs(dy) > 0) {
                 speed = DEFAULT_IDLE_SPEED;
             }
 
-            const newNode = createNode({x: Math.floor(x - dx * speed), 
-                y: Math.floor(y - dy * speed)});
+            let newX = Math.floor(x - dx * speed);
+            let newY = Math.floor(y - dy * speed);
+
+            if (newX < 0) {
+                newX = MAP.WIDTH;
+            } else if (newX > MAP.WIDTH) {
+                newX = 0;
+            }
+
+            if (newY < 0) {
+                newY = MAP.HEIGHT;
+            } else if (newY > MAP.HEIGHT) {
+                newY = 0;
+            }
+
+            const newNode = createNode({x: newX, y: newY});
 
             const newEntity = {
                 ...entity,

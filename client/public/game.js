@@ -112,24 +112,26 @@ function renderObstacle({id, score, nodes, type}, isFill) {
 
     const {x, y} = payload || nodes[0];
 
-    gameCtx.beginPath();
-    gameCtx.fillStyle = COLOR.BACKGROUND;
-    gameCtx.strokeStyle = COLOR.ENTITY;
-    gameCtx.lineWidth = 2; 
-
-    gameCtx.rect(x - size / 2, y - size / 2, size, size);
-    gameCtx.fill();
-    gameCtx.stroke();
-
     if (isFill) {
-        const innerSize = size / 2;
         gameCtx.beginPath();
+        gameCtx.lineWidth = 5;
+        gameCtx.strokeStyle = COLOR.ENTITY;
         gameCtx.fillStyle = COLOR.ENTITY;
-        gameCtx.strokeStyle = COLOR.BACKGROUND;
-        gameCtx.lineWidth = 2;
-        gameCtx.rect(x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
-        gameCtx.fill();
+        gameCtx.moveTo(x, y - size / 2);
+        gameCtx.lineTo(x + size / 2, y);
+        gameCtx.lineTo(x, y + size / 2);
+        gameCtx.lineTo(x - size / 2, y);
+        gameCtx.closePath();
         gameCtx.stroke();
+        gameCtx.fill();
+    } else {
+        gameCtx.beginPath();
+        gameCtx.lineWidth = 5;
+        gameCtx.strokeStyle = COLOR.ENTITY;
+        gameCtx.arc(x, y, size/2, 0, Math.PI * 2, false);
+        gameCtx.fillStyle = COLOR.BACKGROUND;
+        gameCtx.stroke();
+        gameCtx.fill();
     }
 
     if(payload) {
@@ -271,33 +273,17 @@ function renderSnake(entity) {
     const snakeColor = getSnakeColor(entity);
     const size = getEntitySize(entity.score, entity.type);
 
-    gameCtx.beginPath();
-    gameCtx.lineWidth = size;
+    gameCtx.fillStyle = snakeColor;
     gameCtx.strokeStyle = snakeColor;
-    gameCtx.lineCap = 'round';
+    gameCtx.lineWidth = 2;
 
-    entity.nodes.forEach((node, index) => {
-        if (index === 0) {
-            gameCtx.moveTo(node.x, node.y);
-        } else {
-            gameCtx.lineTo(node.x, node.y);
-        }
-    });
-
-    gameCtx.stroke();
-
-    const nodesLeft = entity.nodes.slice(-1);
-    nodesLeft.forEach((node) => {
+    entity.nodes.forEach(({x, y}) => {
         gameCtx.beginPath();
-        gameCtx.lineWidth = 2;
-        gameCtx.strokeStyle = snakeColor;
-        gameCtx.arc(node.x, node.y, size / 2, 0, Math.PI * 2, false);
-        gameCtx.fillStyle = COLOR.BACKGROUND;
+        gameCtx.arc(x, y, size / 2, 0, Math.PI * 2, false);
         gameCtx.fill();
         gameCtx.stroke();
     });
 }
-
 
 function renderPlayer() {
     renderSnake(player);
@@ -797,66 +783,6 @@ function createAnimationFrame({id, payload}) {
     return {id, payload};
 }
 
-function updateEntityFromMap(entity) {
-    gameEntities = [...gameEntities].map(gameEntity => {
-        if(gameEntity.id === entity.id) {
-           return { ...gameEntity, ...entity };
-        }
-        return gameEntity;
-    });
-}
-
-function updateNodePositions (entity) {
-    for (let i = entity.nodes.length - 1; i > 0; i--) {
-        entity.nodes[i] = entity.nodes[i-1];
-    }
-    return entity;
-}
-
-function addNodeToEntity(entity) { 
-    let newEntity = {...entity};
-    const lastNode = newEntity.nodes[newEntity.nodes.length - 1];
-
-    if(newEntity.tail.current < newEntity.tail.max) {
-        newEntity.nodes = [...newEntity.nodes, lastNode];
-        newEntity.tail.current += 1;
-    }
-    return newEntity;
-}
-
-function movePlayerEntities() {
-    [...gameEntities].forEach((entity) => {
-        if(entity.type === TYPE.PLAYER) {
-            const {x, y} = entity.nodes[0];
-            const {x: dx, y: dy} = entity.direction;
-            
-            let speed = DEFAULT_IDLE_SPEED+1.3;
-
-            if(Math.abs(dx) > 0 && Math.abs(dy) > 0) {
-                speed = DEFAULT_IDLE_SPEED;
-            }
-
-            const newNode = createNode({x: Math.floor(x - dx * speed), 
-                y: Math.floor(y - dy * speed)});
-
-
-            const newEntity = {
-                ...entity,
-                nodes: [newNode, ...entity.nodes.slice(1)]
-            };
-
-            
-            let updatedNodes = addNodeToEntity(newEntity);
-            updatedNodes = updateNodePositions(updatedNodes);
-            updateEntityFromMap(updatedNodes);
-
-            if(player.id === updatedNodes.id) {
-                player = updatedNodes;
-            }
-        }
-    });
-}
-
 function hasCompleteProperties(entity) {
 
     const ENTITY_PROPERTIES = [
@@ -1007,7 +933,6 @@ function updateGame() {
     playerControl();
     scoreBoardControls();
     renderEntities();
-    movePlayerEntities();
 
     updateUIEffects();
     updateUIGameTimeLeft();
