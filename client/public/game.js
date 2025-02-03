@@ -37,6 +37,11 @@ const COLOR = {
     ENTITY: '#242424'
 }
 
+const MAP = {
+    WIDTH: 600,
+    HEIGHT: 600
+}
+
 function establishConnection() {
     const roomId = getRoomId();
     const playerName = getPlayerName();
@@ -933,6 +938,7 @@ function updateGame() {
     playerControl();
     scoreBoardControls();
     renderEntities();
+    movePlayerEntities();
 
     updateUIEffects();
     updateUIGameTimeLeft();
