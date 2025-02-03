@@ -1213,6 +1213,79 @@ function generateScoreBoard() {
     scoreBoard = updatedScoreBoard.sort((a, b) => b.score - a.score);
 }
 
+
+function updateEntityFromMap(entity) {
+    gameEntities = [...gameEntities].map(gameEntity => {
+        if(gameEntity.id === entity.id) {
+           return { ...gameEntity, ...entity };
+        }
+        return gameEntity;
+    });
+}
+
+function updateNodePositions (entity) {
+    for (let i = entity.nodes.length - 1; i > 0; i--) {
+        entity.nodes[i] = entity.nodes[i-1];
+    }
+    return entity;
+}
+
+function addNodeToEntity(entity) { 
+    let newEntity = {...entity};
+    const lastNode = newEntity.nodes[newEntity.nodes.length - 1];
+
+    if(newEntity.tail.current < newEntity.tail.max) {
+        newEntity.nodes = [...newEntity.nodes, lastNode];
+        newEntity.tail.current += 1;
+    }
+    return newEntity;
+}
+
+function movePlayerEntities() {
+    [...gameEntities].forEach((entity) => {
+        if(entity.type === TYPE.PLAYER) {
+            const {x, y} = entity.nodes[0];
+            const {x: dx, y: dy} = entity.direction;
+            
+            let speed = DEFAULT_IDLE_SPEED + 1.3;
+
+            if(Math.abs(dx) > 0 && Math.abs(dy) > 0) {
+                speed = DEFAULT_IDLE_SPEED;
+            }
+
+            let newX = Math.floor(x - dx * speed);
+            let newY = Math.floor(y - dy * speed);
+
+            if (newX < 0) {
+                newX = MAP.WIDTH;
+            } else if (newX > MAP.WIDTH) {
+                newX = 0;
+            }
+
+            if (newY < 0) {
+                newY = MAP.HEIGHT;
+            } else if (newY > MAP.HEIGHT) {
+                newY = 0;
+            }
+
+            const newNode = createNode({x: newX, y: newY});
+
+            const newEntity = {
+                ...entity,
+                nodes: [newNode, ...entity.nodes.slice(1)]
+            };
+
+            let updatedNodes = addNodeToEntity(newEntity);
+            updatedNodes = updateNodePositions(updatedNodes);
+            updateEntityFromMap(updatedNodes);
+
+            if(player.id === updatedNodes.id) {
+                player = updatedNodes;
+            }
+        }
+    });
+}
+
 establishConnection();
 let gameCanvas = createGameCanvas();
 let uiCanvas = createUICanvas();
