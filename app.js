@@ -799,7 +799,7 @@ function removeDeadEntities(room) {
     if (playerCount <= 1 && !room.singlePlayer || playerCount <= 0 && room.singlePlayer) {
         getPlayerEntities(room).forEach((entity) => {
             const client = getClient(entity);
-            client.close(4004, 'Game timedout');
+            client?.close(4004, 'Game timedout');
         });
     }
 }
@@ -1013,7 +1013,7 @@ function sendToClientCreatorLeft(room, player) {
     getPlayerEntities(room).forEach((entity) => {
         if (entity.id === player.id) return;
         const client = getClient(entity);
-        client.close(4006, 'Creator left');
+        client?.close(4006, 'Creator left');
     });
 }
 
