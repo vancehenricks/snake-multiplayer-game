@@ -743,7 +743,7 @@ function intersectSelf({entity, gameEntity, hits, room}) {
 }
 
 function isIdleTimedOut(entity) {
-    if (Date.now() - entity.timeout > IDLE_TIMEOUT_MS) {
+    if (Date.now() - entity.timeout > IDLE_TIMEOUT_MS && entity.type !== TYPE.PLAYER) {
         return true;
     }
     return false;
