@@ -1,3 +1,3 @@
 # snake-multiplayer-game
-Demo snekpvp.lol
-snake multiplayer game using nodejs, websockets and html canvas
+* snake multiplayer game using nodejs, websockets and html canvas
+* Play at snekpvp.lol
