@@ -14,7 +14,7 @@ start-dev: # Run development setup
 
 start: # Run production setup
 	@echo "Setting up production environment..."
-	@echo "var ADDR = 'wss://snekpvp.lol';" > client/public/config.js
+	@echo "var ADDR = 'wss://${DOMAIN}';" > client/public/config.js
 	@npm ci
 	@npm run start
 
